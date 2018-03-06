@@ -60,6 +60,7 @@ public:
 
   /**
    * Updates the state by using Extended Kalman Filter equations
+   * Extended Kalman Filter (EKF) measurement matrix is not linear
    * @param z The measurement at k+1
    */
   void UpdateEKF(const Eigen::VectorXd &z);
