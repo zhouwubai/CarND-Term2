@@ -50,5 +50,16 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   /**
   TODO:
     * update the state by using Extended Kalman Filter equations
+    * it is exactly the same as Update, only z, H_, R_ is different (size,)
   */
+  VectorXd z_pred = H_ * x_;
+  VectorXd y = z - z_pred;
+  MatrixXd H_t = H_.transpose();
+  MatrixXd S = H_ * P_ * H_t + R_;
+  MatrixXd S_inv = S.inverse();
+  MatrixXd K = P_ * H_t * S_inv;
+    
+  //new estimate
+  x_ = x_ + K * y;
+  P_ = P_ - K * H_ * P_;
 }
