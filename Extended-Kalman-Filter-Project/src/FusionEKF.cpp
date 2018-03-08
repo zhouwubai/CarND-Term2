@@ -48,7 +48,7 @@ FusionEKF::FusionEKF() {
                0, 0, 1000, 0,
                0, 0, 0, 1000;
     
-    ekf_.F_ = MatrixXd(2, 4);
+    ekf_.F_ = MatrixXd(4, 4);
     ekf_.F_ << 1, 0, 1, 0,
                0, 1, 0, 1,
                0, 0, 1, 0,
@@ -88,6 +88,7 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
         float ro_dot = measurement_pack.raw_measurements_[2];
         // x, y, vx, vy, y axis is horizontal, x axis is vertical
         ekf_.x_ << ro*cos(theta), ro*sin(theta), ro_dot*cos(theta), ro_dot*sin(theta);
+        // ekf_.x_ << ro*cos(theta), ro*sin(theta), 0, 0;
     }
     else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
       /**
@@ -160,6 +161,6 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   }
 
   // print the output
-  cout << "x_ = " << ekf_.x_ << endl;
-  cout << "P_ = " << ekf_.P_ << endl;
+  // cout << "x_ = " << ekf_.x_ << endl;
+  // cout << "P_ = " << ekf_.P_ << endl;
 }
