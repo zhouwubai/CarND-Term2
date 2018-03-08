@@ -58,6 +58,7 @@ ide_profiles/xcode/Debug/
 ide_profiles/xcode/ExtendedKF.build/
 
 */ide_profiles/*
+*/ide_profile/*
 
 # ipython with c++ kernel enus cling
 .ipynb_checkpoints
