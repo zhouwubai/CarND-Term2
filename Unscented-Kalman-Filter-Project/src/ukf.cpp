@@ -114,3 +114,25 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   You'll also need to calculate the radar NIS.
   */
 }
+
+
+/**
+* Generate Sigma Points
+* @param {MatrixXd&} Xsig_out
+*/
+void UKF::GenerateSigmaPoints(MatrixXd* Xsig_out){
+    int n_x = 5;
+    int lambda = 3 - n_x;
+    
+    MatrixXd Xsig = MatrixXd(n_x, 2*n_x + 1);
+    //square root of (lambda + nx) * P
+    MatrixXd A = P_.llt().matrixL();
+    A = A * sqrt(lambda + n_x);
+    
+    Xsig.col(0) = x_;
+    for (int i = 0; i < n_x; i++){
+        Xsig.col(i+1) = x_ + A.col(i);
+        Xsig.col(i+n_x+1) = x_ - A.col(i);
+    }
+    *Xsig_out = Xsig;
+}
