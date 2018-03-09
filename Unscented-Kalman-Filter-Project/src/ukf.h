@@ -105,6 +105,7 @@ public:
   
   void GenerateSigmaPoints(MatrixXd* Xsig_out);
   void AugmentedSigmaPoints(MatrixXd* Xsig_out);
+  void SigmaPointPrediction(MatrixXd* Xsig_out);
 };
 
 #endif /* UKF_H */

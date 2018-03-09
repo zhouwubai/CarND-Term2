@@ -156,8 +156,8 @@ void UKF::AugmentedSigmaPoints(MatrixXd *Xsig_out){
     
     MatrixXd P_aug = MatrixXd(n_aug, n_aug);
     P_aug.topLeftCorner(n_x, n_x) = P_;
-    P_aug(n_x+1, n_x+1) = std_a;
-    P_aug(n_x+2, n_x+2) = std_yawdd;
+    P_aug(n_x+1, n_x+1) = std_a*std_a;
+    P_aug(n_x+2, n_x+2) = std_yawdd*std_yawdd;
     
     MatrixXd A = P_aug.llt().matrixL();
     MatrixXd sqrt_A = A * sqrt(lambda +  n_aug);
@@ -170,5 +170,64 @@ void UKF::AugmentedSigmaPoints(MatrixXd *Xsig_out){
     }
     
     *Xsig_out = Xsig_aug;
+}
+
+
+/**
+*
+*/
+void SigmaPointPrediction(MatrixXd* Xsig_out){
+  //set state dimension
+  int n_x = 5;
+
+  //set augmented dimension
+  int n_aug = 7;
+
+  //create example sigma point matrix
+  MatrixXd Xsig_aug = MatrixXd(n_aug, 2 * n_aug + 1);
+  Xsig_aug <<
+    5.7441,  5.85768,   5.7441,   5.7441,   5.7441,   5.7441,   5.7441,   5.7441,   5.63052,   5.7441,   5.7441,   5.7441,   5.7441,   5.7441,   5.7441,
+      1.38,  1.34566,  1.52806,     1.38,     1.38,     1.38,     1.38,     1.38,   1.41434,  1.23194,     1.38,     1.38,     1.38,     1.38,     1.38,
+    2.2049,  2.28414,  2.24557,  2.29582,   2.2049,   2.2049,   2.2049,   2.2049,   2.12566,  2.16423,  2.11398,   2.2049,   2.2049,   2.2049,   2.2049,
+    0.5015,  0.44339, 0.631886, 0.516923, 0.595227,   0.5015,   0.5015,   0.5015,   0.55961, 0.371114, 0.486077, 0.407773,   0.5015,   0.5015,   0.5015,
+    0.3528, 0.299973, 0.462123, 0.376339,  0.48417, 0.418721,   0.3528,   0.3528,  0.405627, 0.243477, 0.329261,  0.22143, 0.286879,   0.3528,   0.3528,
+         0,        0,        0,        0,        0,        0,  0.34641,        0,         0,        0,        0,        0,        0, -0.34641,        0,
+         0,        0,        0,        0,        0,        0,        0,  0.34641,         0,        0,        0,        0,        0,        0, -0.34641;
+
+  //create matrix with predicted sigma points as columns
+  MatrixXd Xsig_pred = MatrixXd(n_x, 2 * n_aug + 1);
+
+  double delta_t = 0.1; //time diff in sec
+  double delta_t2 = delta_t * delta_t;
+
+  //predict sigma points, map augmented state of length 7 to length 5
+  //avoid division by zero
+  //write predicted sigma points into right column
+  for (int i = 0; i < 2*n_aug+1; i++){
+    VectorXd aug_x = Xsig_aug.col(i);
+    float v = aug_x(2);
+    float rho = aug_x(3);
+    float rho_dot = aug_x(4);
+    float v_dot = aug_x(5);
+    float rho_dd = aug_x(6);
+    
+    float c_rho = cos(rho);
+    float s_rho = sin(rho);
+    
+    VectorXd delta_x(n_x);
+    VectorXd noise_x(n_x);
+    // if yaw rate is 0, car is going straight
+    if (rho_dot == 0){
+        delta_x << v * c_rho * delta_t, v * s_rho * delta_t, 0, 0, 0;
+    } else {
+        float vr_dot = v / rho_dot;
+        float max_rho = rho + rho_dot * delta_t;
+        delta_x << vr_dot * (sin(max_rho) - s_rho), vr_dot * (-cos(max_rho) + c_rho), 0, rho_dot * delta_t, 0;
+    }
+    noise_x << delta_t2 * c_rho * v_dot/2, delta_t2 * s_rho * v_dot/2, delta_t * v_dot, delta_t2 * rho_dd/2, delta_t * rho_dd;
+    Xsig_pred.col(i) = aug_x.head(n_x) + delta_x + noise_x;
+  }
+
+  *Xsig_out = Xsig_pred;
 }
 
