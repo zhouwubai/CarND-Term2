@@ -118,7 +118,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
 /**
 * Generate Sigma Points
-* @param {MatrixXd&} Xsig_out
+* @param {MatrixXd*} Xsig_out
 */
 void UKF::GenerateSigmaPoints(MatrixXd* Xsig_out){
     int n_x = 5;
@@ -136,3 +136,39 @@ void UKF::GenerateSigmaPoints(MatrixXd* Xsig_out){
     }
     *Xsig_out = Xsig;
 }
+
+/**
+* Generate Augmented Sigma Points
+* Given noise covariance on acceleration and yaw rate acceleration
+* @Param {MatrixXd*} Xsig_out
+*/
+void UKF::AugmentedSigmaPoints(MatrixXd *Xsig_out){
+    int n_x = 5;
+    int n_aug = 7;
+    double lambda = 3 - n_aug;
+    // process noise standard deviation longitudial acceleration in (m/s)^2
+    double std_a = 0.2;
+    // process noise standard deviation yaw rate acceleration in (rad/s)^2
+    double std_yawdd = 0.2;
+    
+    MatrixXd x_aug = VectorXd(n_aug);
+    x_aug.head(n_x) = x_;
+    
+    MatrixXd P_aug = MatrixXd(n_aug, n_aug);
+    P_aug.topLeftCorner(n_x, n_x) = P_;
+    P_aug(n_x+1, n_x+1) = std_a;
+    P_aug(n_x+2, n_x+2) = std_yawdd;
+    
+    MatrixXd A = P_aug.llt().matrixL();
+    MatrixXd sqrt_A = A * sqrt(lambda +  n_aug);
+    
+    MatrixXd Xsig_aug = MatrixXd(n_aug, 2*n_aug+1);
+    Xsig_aug.col(0) = x_aug;
+    for (int i = 0; i < n_aug; i++){
+        Xsig_aug.col(i+1) = x_aug + sqrt_A.col(i);
+        Xsig_aug.col(i+n_aug+1) = x_aug - sqrt_A.col(i);
+    }
+    
+    *Xsig_out = Xsig_aug;
+}
+
