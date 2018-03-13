@@ -103,11 +103,19 @@ public:
    */
   void UpdateRadar(MeasurementPackage meas_package);
   
-  void GenerateSigmaPoints(MatrixXd* Xsig_out);
-  void AugmentedSigmaPoints(MatrixXd* Xsig_out);
-  void SigmaPointPrediction(MatrixXd* Xsig_out);
-  void PredictMeanAndCovariance(VectorXd* x_pred, MatrixXd* P_pred);
+  
+  void AugmentedSigmaPoints(MatrixXd* X_sample);
+  
+  
+  void SigmaPointPrediction(MatrixXd* X_state, MatrixXd& X_sample,  double delta_t);
+  
+  
+  void PredictMeanAndCovariance(VectorXd* x_pred, MatrixXd* P_pred, MatrixXd& X_pred);
+  
+  
   void PredictRadarMeasurement(VectorXd* z_out, MatrixXd* S_out);
+  
+  
   void UpdateState(VectorXd* x_out, MatrixXd* P_out);
 };
 

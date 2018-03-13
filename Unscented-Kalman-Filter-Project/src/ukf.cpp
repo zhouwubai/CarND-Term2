@@ -54,6 +54,18 @@ UKF::UKF() {
 
   Hint: one or more values initialized above might be wildly off...
   */
+  n_x_ = 5;
+  n_aug_ = 7;
+  lambda_ = 3 - n_aug_;
+  
+  weights_ = VectorXd(2 * n_aug_ + 1);
+  weights_(0) = lambda_ / (lambda_ + n_aug_);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+    weights_(i) = 0.5 / (lambda_ + n_aug_);
+  }
+  
+  Xsig_pred_ = MatrixXd(n_aug_, 2 * n_aug_ + 1);
+  
   P_ << 1, 0, 0, 0, 0,
         0, 1, 0, 0, 0,
         0, 0, 1, 0, 0,
@@ -173,97 +185,51 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   */
 }
 
-
-/**
-* Generate Sigma Points
-* @param {MatrixXd*} Xsig_out
-*/
-void UKF::GenerateSigmaPoints(MatrixXd* Xsig_out){
-    int n_x = 5;
-    int lambda = 3 - n_x;
-    
-    MatrixXd Xsig = MatrixXd(n_x, 2*n_x + 1);
-    //square root of (lambda + nx) * P
-    MatrixXd A = P_.llt().matrixL();
-    A = A * sqrt(lambda + n_x);
-    
-    Xsig.col(0) = x_;
-    for (int i = 0; i < n_x; i++){
-        Xsig.col(i+1) = x_ + A.col(i);
-        Xsig.col(i+n_x+1) = x_ - A.col(i);
-    }
-    *Xsig_out = Xsig;
-}
-
 /**
 * Generate Augmented Sigma Points
 * Given noise covariance on acceleration and yaw rate acceleration
-* @Param {MatrixXd*} Xsig_out
+* @Param {MatrixXd*} X_sample: 2 * n_aug_ + 1 samples
 */
-void UKF::AugmentedSigmaPoints(MatrixXd *Xsig_out){
-    int n_x = 5;
-    int n_aug = 7;
-    double lambda = 3 - n_aug;
-    // process noise standard deviation longitudial acceleration in (m/s)^2
-    double std_a = 0.2;
-    // process noise standard deviation yaw rate acceleration in (rad/s)^2
-    double std_yawdd = 0.2;
+void UKF::AugmentedSigmaPoints(MatrixXd *X_sample){
+
+    MatrixXd x_aug = VectorXd(n_aug_);
+    x_aug.head(n_x_) = x_;
     
-    MatrixXd x_aug = VectorXd(n_aug);
-    x_aug.head(n_x) = x_;
-    
-    MatrixXd P_aug = MatrixXd(n_aug, n_aug);
-    P_aug.topLeftCorner(n_x, n_x) = P_;
-    P_aug(n_x+1, n_x+1) = std_a*std_a;
-    P_aug(n_x+2, n_x+2) = std_yawdd*std_yawdd;
+    MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
+    P_aug.topLeftCorner(n_x_, n_x_) = P_;
+    P_aug(n_x_ + 1, n_x_ + 1) = std_a_ * std_a_;
+    P_aug(n_x_ + 2, n_x_ + 2) = std_yawdd_ * std_yawdd_;
     
     MatrixXd A = P_aug.llt().matrixL();
-    MatrixXd sqrt_A = A * sqrt(lambda +  n_aug);
+    MatrixXd sqrt_A = A * sqrt(lambda_ +  n_aug_);
     
-    MatrixXd Xsig_aug = MatrixXd(n_aug, 2*n_aug+1);
+    MatrixXd Xsig_aug = MatrixXd(n_aug_, 2 * n_aug_ + 1);
     Xsig_aug.col(0) = x_aug;
-    for (int i = 0; i < n_aug; i++){
+    for (int i = 0; i < n_aug_; i++){
         Xsig_aug.col(i+1) = x_aug + sqrt_A.col(i);
-        Xsig_aug.col(i+n_aug+1) = x_aug - sqrt_A.col(i);
+        Xsig_aug.col(i+n_aug_+1) = x_aug - sqrt_A.col(i);
     }
     
-    *Xsig_out = Xsig_aug;
+    *X_sample = Xsig_aug;
 }
 
 
 /**
-* Predict augmented sigma points to state sigma points
-* @Param {MatrixXd*} Xsig_out
+* Predict augmented sigma points to state sigma points after time delta
+* @Param {MatrixXd*} X_state: 2 * n_aug_ + 1 state sigma points
+* @Param {MatrixXd&} X_sample: 2 * n_aug_ + 1 sampled augmented sigma points
 */
-void UKF::SigmaPointPrediction(MatrixXd* Xsig_out){
-  //set state dimension
-  int n_x = 5;
-
-  //set augmented dimension
-  int n_aug = 7;
-
-  //create example sigma point matrix
-  MatrixXd Xsig_aug = MatrixXd(n_aug, 2 * n_aug + 1);
-  Xsig_aug <<
-    5.7441,  5.85768,   5.7441,   5.7441,   5.7441,   5.7441,   5.7441,   5.7441,   5.63052,   5.7441,   5.7441,   5.7441,   5.7441,   5.7441,   5.7441,
-      1.38,  1.34566,  1.52806,     1.38,     1.38,     1.38,     1.38,     1.38,   1.41434,  1.23194,     1.38,     1.38,     1.38,     1.38,     1.38,
-    2.2049,  2.28414,  2.24557,  2.29582,   2.2049,   2.2049,   2.2049,   2.2049,   2.12566,  2.16423,  2.11398,   2.2049,   2.2049,   2.2049,   2.2049,
-    0.5015,  0.44339, 0.631886, 0.516923, 0.595227,   0.5015,   0.5015,   0.5015,   0.55961, 0.371114, 0.486077, 0.407773,   0.5015,   0.5015,   0.5015,
-    0.3528, 0.299973, 0.462123, 0.376339,  0.48417, 0.418721,   0.3528,   0.3528,  0.405627, 0.243477, 0.329261,  0.22143, 0.286879,   0.3528,   0.3528,
-         0,        0,        0,        0,        0,        0,  0.34641,        0,         0,        0,        0,        0,        0, -0.34641,        0,
-         0,        0,        0,        0,        0,        0,        0,  0.34641,         0,        0,        0,        0,        0,        0, -0.34641;
-
+void UKF::SigmaPointPrediction(MatrixXd* X_state, MatrixXd& X_sample, double delta_t){
+ 
   //create matrix with predicted sigma points as columns
-  MatrixXd Xsig_pred = MatrixXd(n_x, 2 * n_aug + 1);
-
-  double delta_t = 0.1; //time diff in sec
+  MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
   double delta_t2 = delta_t * delta_t;
 
   //predict sigma points, map augmented state of length 7 to length 5
   //avoid division by zero
   //write predicted sigma points into right column
-  for (int i = 0; i < 2*n_aug+1; i++){
-    VectorXd aug_x = Xsig_aug.col(i);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+    VectorXd aug_x = X_sample.col(i);
     float v = aug_x(2);
     float rho = aug_x(3);
     float rho_dot = aug_x(4);
@@ -273,8 +239,8 @@ void UKF::SigmaPointPrediction(MatrixXd* Xsig_out){
     float c_rho = cos(rho);
     float s_rho = sin(rho);
     
-    VectorXd delta_x(n_x);
-    VectorXd noise_x(n_x);
+    VectorXd delta_x(n_x_);
+    VectorXd noise_x(n_x_);
     // if yaw rate is 0, car is going straight
     if (fabs(rho_dot) < 0.001){
         delta_x << v * c_rho * delta_t, v * s_rho * delta_t, 0, 0, 0;
@@ -284,65 +250,43 @@ void UKF::SigmaPointPrediction(MatrixXd* Xsig_out){
         delta_x << vr_dot * (sin(max_rho) - s_rho), vr_dot * (-cos(max_rho) + c_rho), 0, rho_dot * delta_t, 0;
     }
     noise_x << delta_t2 * c_rho * v_dot/2, delta_t2 * s_rho * v_dot/2, delta_t * v_dot, delta_t2 * rho_dd/2, delta_t * rho_dd;
-    Xsig_pred.col(i) = aug_x.head(n_x) + delta_x + noise_x;
+    Xsig_pred.col(i) = aug_x.head(n_x_) + delta_x + noise_x;
   }
 
-  *Xsig_out = Xsig_pred;
+  *X_state = Xsig_pred;
 }
 
 /**
 * Given predicted state sigma points, estimate its mean and covariances
-* @Param {VectorXd*} x_pred
-* @Param {Matrix*} P_pred
+* @Param {VectorXd*} x_pred: estimated state mean from sigma points
+* @Param {Matrix*} P_pred: estimated state covariance
+* @Param {Matrix&} X_pred: predicted states derived from sampled augmented sigma points
 */
-void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out){
-  //set state dimension
-  int n_x = 5;
+void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out, MatrixXd& X_pred){
 
-  //set augmented dimension
-  int n_aug = 7;
-
-  //define spreading parameter
-  double lambda = 3 - n_aug;
-
-  //create example matrix with predicted sigma points
-  MatrixXd Xsig_pred = MatrixXd(n_x, 2 * n_aug + 1);
-  Xsig_pred <<
-         5.9374,  6.0640,   5.925,  5.9436,  5.9266,  5.9374,  5.9389,  5.9374,  5.8106,  5.9457,  5.9310,  5.9465,  5.9374,  5.9359,  5.93744,
-           1.48,  1.4436,   1.660,  1.4934,  1.5036,    1.48,  1.4868,    1.48,  1.5271,  1.3104,  1.4787,  1.4674,    1.48,  1.4851,    1.486,
-          2.204,  2.2841,  2.2455,  2.2958,   2.204,   2.204,  2.2395,   2.204,  2.1256,  2.1642,  2.1139,   2.204,   2.204,  2.1702,   2.2049,
-         0.5367, 0.47338, 0.67809, 0.55455, 0.64364, 0.54337,  0.5367, 0.53851, 0.60017, 0.39546, 0.51900, 0.42991, 0.530188,  0.5367, 0.535048,
-          0.352, 0.29997, 0.46212, 0.37633,  0.4841, 0.41872,   0.352, 0.38744, 0.40562, 0.24347, 0.32926,  0.2214, 0.28687,   0.352, 0.318159;
-
-  //create vector for weights
-  VectorXd weights = VectorXd(2*n_aug+1);
-  
   //create vector for predicted state
-  VectorXd x = VectorXd(n_x);
+  VectorXd x = VectorXd(n_x_);
 
   //create covariance matrix for prediction
-  MatrixXd P = MatrixXd(n_x, n_x);
+  MatrixXd P = MatrixXd(n_x_, n_x_);
 
-  //set weights
   //predict state mean
   //predict state covariance matrix
-  weights(0) = lambda / (lambda + n_aug);
-  for (int i = 0; i < 2 * n_aug + 1; i++){
-    weights(i) = 0.5 / (lambda + n_aug);
-  }
   
   x.fill(0.0);
-  for (int i = 0; i < 2 * n_aug + 1; i++){
-    x += weights(i) * Xsig_pred.col(i);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+    x += weights_(i) * X_pred.col(i);
   }
   
   P.fill(0.0);
-  for(int i = 0; i < 2 * n_aug + 1; i++){
-    VectorXd residual = Xsig_pred.col(i) - x;
-        //angle normalization
+  for(int i = 0; i < 2 * n_aug_ + 1; i++){
+    VectorXd residual = X_pred.col(i) - x;
+    
+    //angle normalization
     while (residual(3) > M_PI) residual(3) -= 2.*M_PI;
     while (residual(3) < -M_PI) residual(3) += 2.*M_PI;
-    P += weights(i) * (residual * residual.transpose());
+    
+    P += weights_(i) * (residual * residual.transpose());
   }
   
   //write result
