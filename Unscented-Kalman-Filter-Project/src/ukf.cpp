@@ -122,10 +122,10 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     [x] predict
    */
     
-    float dt = (meas_package.timestamp_ - time_us_) / 1000000.0;
+    float delta_t = (meas_package.timestamp_ - time_us_) / 1000000.0;
     time_us_ = meas_package.timestamp_;
     
-    Prediction(dt);
+    Prediction(delta_t);
   
    /*****************************************************************************
    *  Update
@@ -153,6 +153,10 @@ void UKF::Prediction(double delta_t) {
   Complete this function! Estimate the object's location. Modify the state
   vector, x_. Predict sigma points, the state, and the state covariance matrix.
   */
+  MatrixXd Xsig_aug = MatrixXd(n_aug_, 2 * n_aug_ + 1);
+  AugmentedSigmaPoints(&Xsig_aug);
+  SigmaPointPrediction(&Xsig_pred_, Xsig_aug, delta_t);
+  PredictMeanAndCovariance(&x_, &P_, Xsig_pred_);
 }
 
 /**
@@ -192,7 +196,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 */
 void UKF::AugmentedSigmaPoints(MatrixXd *X_sample){
 
-    MatrixXd x_aug = VectorXd(n_aug_);
+    VectorXd x_aug = VectorXd(n_aug_);
     x_aug.head(n_x_) = x_;
     
     MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
@@ -216,10 +220,10 @@ void UKF::AugmentedSigmaPoints(MatrixXd *X_sample){
 
 /**
 * Predict augmented sigma points to state sigma points after time delta
-* @Param {MatrixXd*} X_state: 2 * n_aug_ + 1 state sigma points
+* @Param {MatrixXd*} X_pred: 2 * n_aug_ + 1 state sigma points
 * @Param {MatrixXd&} X_sample: 2 * n_aug_ + 1 sampled augmented sigma points
 */
-void UKF::SigmaPointPrediction(MatrixXd* X_state, MatrixXd& X_sample, double delta_t){
+void UKF::SigmaPointPrediction(MatrixXd* X_pred, MatrixXd& X_sample, double delta_t){
  
   //create matrix with predicted sigma points as columns
   MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
@@ -253,7 +257,7 @@ void UKF::SigmaPointPrediction(MatrixXd* X_state, MatrixXd& X_sample, double del
     Xsig_pred.col(i) = aug_x.head(n_x_) + delta_x + noise_x;
   }
 
-  *X_state = Xsig_pred;
+  *X_pred = Xsig_pred;
 }
 
 /**
