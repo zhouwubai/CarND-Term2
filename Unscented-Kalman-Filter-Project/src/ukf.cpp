@@ -54,6 +54,11 @@ UKF::UKF() {
 
   Hint: one or more values initialized above might be wildly off...
   */
+  P_ << 1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+        0, 0, 1, 0, 0,
+        0, 0, 0, 1, 0,
+        0, 0, 0, 0, 1;
 }
 
 UKF::~UKF() {}
@@ -69,6 +74,47 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   Complete this function! Make sure you switch between lidar and radar
   measurements.
   */
+  if (!is_initialized_) {
+    cout << "UKF: " << endl;
+    
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR){
+        float rho = meas_package.raw_measurements_[0];
+        float yaw = meas_package.raw_measurements_[1];
+        float rho_dot = meas_package.raw_measurements_[2];
+        float px = rho*cos(yaw);
+        float py = rho*sin(yaw);
+        // px, py, v, yaw, yawr, not sure about yawrd
+        x_ << px, py, rho_dot, atan2(py, px), 0;
+    } else if (meas_package.sensor_type_ == MeasurementPackage::LASER){
+        x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 0, 0, 0;
+    }
+    
+    time_us_ = meas_package.timestamp_;
+    is_initialized_ = true;
+    return;
+  }// END_IF (!is_initialized)
+  
+   /*****************************************************************************
+   *  Prediction
+   ****************************************************************************/
+   /**
+    [x] check use_laser_, use_radar or both
+    [x] calculate time delta
+    [x] predict
+   */
+  
+  
+  
+  
+   /*****************************************************************************
+   *  Update
+   ****************************************************************************/
+  /**
+  [x] check sensor type
+  [x] update: almost same as EKF, just use sampling instead jacobian matrix
+  */
+  
+  
 }
 
 /**
