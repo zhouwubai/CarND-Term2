@@ -94,17 +94,26 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     return;
   }// END_IF (!is_initialized)
   
+  
+    // Gateway for data, check use_laser_, use_radar or both
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR && !use_radar_){
+        return;
+    } else if (meas_package.sensor_type_ == MeasurementPackage::LASER && !use_laser_){
+        return;
+    }
+  
    /*****************************************************************************
    *  Prediction
    ****************************************************************************/
    /**
-    [x] check use_laser_, use_radar or both
     [x] calculate time delta
     [x] predict
    */
-  
-  
-  
+    
+    float dt = (meas_package.timestamp_ - time_us_) / 1000000.0;
+    time_us_ = meas_package.timestamp_;
+    
+    Prediction(dt);
   
    /*****************************************************************************
    *  Update
@@ -113,8 +122,11 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   [x] check sensor type
   [x] update: almost same as EKF, just use sampling instead jacobian matrix
   */
-  
-  
+  if (meas_package.sensor_type_ == MeasurementPackage::RADAR){
+    UpdateRadar(meas_package);
+  } else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+    UpdateLidar(meas_package);
+  }
 }
 
 /**
