@@ -45,7 +45,10 @@ public:
 
   ///* Laser measurement noise standard deviation position2 in m
   double std_laspy_;
-
+  
+  MatrixXd R_laser_;
+  MatrixXd H_laser_;
+  
   ///* Radar measurement noise standard deviation radius in m
   double std_radr_;
 
@@ -54,6 +57,8 @@ public:
 
   ///* Radar measurement noise standard deviation radius change in m/s
   double std_radrd_ ;
+  
+  MatrixXd R_radar_;
 
   ///* Weights of sigma points
   VectorXd weights_;
@@ -66,7 +71,12 @@ public:
 
   ///* Sigma point spreading parameter
   double lambda_;
-
+  
+  ///* laser measurement dimension
+  int n_z_laser_;
+  
+  ///* radar measurement dimension
+  int n_z_radar_;
 
   /**
    * Constructor

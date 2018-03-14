@@ -17,12 +17,16 @@ UKF::UKF() {
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
-
-  // initial state vector
-  x_ = VectorXd(5);
-
-  // initial covariance matrix
-  P_ = MatrixXd(5, 5);
+  
+  n_x_ = 5;
+  // initial state vector and covariance matrix
+  x_ = VectorXd(n_x_);
+  P_ = MatrixXd(n_x_, n_x_);
+  P_ << 1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+        0, 0, 1, 0, 0,
+        0, 0, 0, 1, 0,
+        0, 0, 0, 0, 1;
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 30;
@@ -36,7 +40,16 @@ UKF::UKF() {
 
   // Laser measurement noise standard deviation position2 in m
   std_laspy_ = 0.15;
-
+  
+  n_z_laser_ = 2; //px, py
+  R_laser_ = MatrixXd(n_z_laser_, n_z_laser_);
+  R_laser_ << std_laspx_ * std_laspx_, 0,
+              0, std_laspy_ * std_laspy_;
+  H_laser_ = MatrixXd(n_z_laser_, n_x_);
+  H_laser_ << 1, 0, 0, 0, 0,
+              0, 1, 0, 0, 0;
+    
+  //DO NOT MODIFY measurement noise values above these are provided by the sensor manufacturer.
   // Radar measurement noise standard deviation radius in m
   std_radr_ = 0.3;
 
@@ -45,16 +58,19 @@ UKF::UKF() {
 
   // Radar measurement noise standard deviation radius change in m/s
   std_radrd_ = 0.3;
-  //DO NOT MODIFY measurement noise values above these are provided by the sensor manufacturer.
+  
+  n_z_radar_ = 3; // rho, phi, rho_dot
+  R_radar_ = MatrixXd(n_z_radar_, n_z_radar_);
+  R_radar_ << std_radr_ * std_radr_, 0, 0,
+              0, std_radphi_ * std_radphi_, 0,
+              0, 0, std_radrd_ * std_radrd_;
   
   /**
   TODO:
-
   Complete the initialization. See ukf.h for other member properties.
 
   Hint: one or more values initialized above might be wildly off...
   */
-  n_x_ = 5;
   n_aug_ = 7;
   lambda_ = 3 - n_aug_;
   
@@ -65,12 +81,6 @@ UKF::UKF() {
   }
   
   Xsig_pred_ = MatrixXd(n_aug_, 2 * n_aug_ + 1);
-  
-  P_ << 1, 0, 0, 0, 0,
-        0, 1, 0, 0, 0,
-        0, 0, 1, 0, 0,
-        0, 0, 0, 1, 0,
-        0, 0, 0, 0, 1;
 }
 
 UKF::~UKF() {}
@@ -307,17 +317,14 @@ void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out, MatrixXd& X
 */
 void UKF::PredictRadarMeasurement(VectorXd& z) {
 
-  //set measurement dimension, radar can measure r, phi, and r_dot
-  int n_z = 3;
-
   //create matrix for sigma points in measurement space
-  MatrixXd Zsig = MatrixXd(n_z, 2 * n_aug_ + 1);
+  MatrixXd Zsig = MatrixXd(n_z_radar_, 2 * n_aug_ + 1);
 
   //mean predicted measurement
-  VectorXd z_pred = VectorXd(n_z);
+  VectorXd z_pred = VectorXd(n_z_radar_);
   
   //measurement covariance matrix S
-  MatrixXd S = MatrixXd(n_z,n_z);
+  MatrixXd S = MatrixXd(n_z_radar_,n_z_radar_);
 
   //transform sigma points into measurement space
   for (int i = 0; i < 2 * n_aug_ + 1; i++){
@@ -330,7 +337,7 @@ void UKF::PredictRadarMeasurement(VectorXd& z) {
     float rho = Xsig_pred_(3, i);
     float dist = sqrt(px * px + py * py);  // this wont be zero
     
-    VectorXd z_sig(n_z);
+    VectorXd z_sig(n_z_radar_);
     z_sig << dist, atan2(py, px), (px*v*cos(rho) + py*v*sin(rho))/dist;
     Zsig.col(i) = z_sig;
   }
@@ -353,17 +360,12 @@ void UKF::PredictRadarMeasurement(VectorXd& z) {
     S += weights_(i) * (residual * residual.transpose());
   }
   
- // Calculate R matrix
- MatrixXd R(n_z, n_z);
- R.fill(0.0);
- R(0, 0) = std_radr_ * std_radr_;
- R(1, 1) = std_radphi_ * std_radphi_;
- R(2, 2) = std_radrd_ * std_radrd_;
- S += R;
+ // Add measurement covariance R_radar_ matrix
+ S += R_radar_;
  
  // Calculate Kalman Gain K
  //create matrix for cross correlation Tc
- MatrixXd Tc = MatrixXd(n_x_, n_z);
+ MatrixXd Tc = MatrixXd(n_x_, n_z_radar_);
  Tc.fill(0.0);
  for (int i = 0; i < 2 * n_aug_ + 1; i++){
    Tc += weights_(i) * (Xsig_pred_.col(i) - x_) * (Zsig.col(i) - z_pred).transpose();
