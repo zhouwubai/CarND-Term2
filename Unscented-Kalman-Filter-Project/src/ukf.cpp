@@ -179,9 +179,20 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
   Complete this function! Use lidar data to update the belief about the object's
   position. Modify the state vector, x_, and covariance, P_.
-
+  
   You'll also need to calculate the lidar NIS.
   */
+  VectorXd z = meas_package.raw_measurements_;
+  VectorXd z_pred = H_laser_ * x_;
+  VectorXd y = z - z_pred;
+  MatrixXd H_t = H_laser_.transpose();
+  MatrixXd S = H_laser_ * P_ * H_t;
+  MatrixXd S_inv = S.inverse();
+  MatrixXd K = P_ * H_t * S_inv;
+  
+  //new estimate
+  x_ += K * y;
+  P_ -= K * H_laser_ * P_;
 }
 
 /**
