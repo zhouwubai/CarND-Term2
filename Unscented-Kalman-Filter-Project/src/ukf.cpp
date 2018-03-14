@@ -80,6 +80,8 @@ UKF::UKF() {
     weights_(i) = 0.5 / (lambda_ + n_aug_);
   }
   
+  NIS_laser_ = 0.0;
+  NIS_radar_ = 0.0;
   Xsig_pred_ = MatrixXd(n_aug_, 2 * n_aug_ + 1);
 }
 
@@ -189,10 +191,11 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   MatrixXd S = H_laser_ * P_ * H_t;
   MatrixXd S_inv = S.inverse();
   MatrixXd K = P_ * H_t * S_inv;
-  
-  //new estimate
+
+  //new estimate and NIS
   x_ += K * y;
   P_ -= K * H_laser_ * P_;
+  NIS_laser_ = y.transpose() * S_inv * y;
 }
 
 /**

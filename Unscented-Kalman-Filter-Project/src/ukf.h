@@ -77,6 +77,9 @@ public:
   
   ///* radar measurement dimension
   int n_z_radar_;
+  
+  float NIS_laser_;
+  float NIS_radar_;
 
   /**
    * Constructor
