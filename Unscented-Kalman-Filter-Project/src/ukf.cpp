@@ -13,7 +13,7 @@ using std::vector;
  */
 UKF::UKF() {
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = true;
+  use_laser_ = false;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
@@ -76,13 +76,14 @@ UKF::UKF() {
   
   weights_ = VectorXd(2 * n_aug_ + 1);
   weights_(0) = lambda_ / (lambda_ + n_aug_);
-  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+  for (int i = 1; i < 2 * n_aug_ + 1; i++){
     weights_(i) = 0.5 / (lambda_ + n_aug_);
   }
   
   NIS_laser_ = 0.0;
   NIS_radar_ = 0.0;
   Xsig_pred_ = MatrixXd(n_aug_, 2 * n_aug_ + 1);
+  Xsig_pred_.fill(0.0);
 }
 
 UKF::~UKF() {}
@@ -137,7 +138,11 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     float delta_t = (meas_package.timestamp_ - time_us_) / 1000000.0;
     time_us_ = meas_package.timestamp_;
     
+    cout << "Before predit:\n";
+    cout << x_ << endl;
     Prediction(delta_t);
+    cout << "After pred:\n";
+    cout << x_ << endl;
   
    /*****************************************************************************
    *  Update
@@ -147,9 +152,14 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   [x] update: almost same as EKF, just use sampling instead jacobian matrix
   */
   if (meas_package.sensor_type_ == MeasurementPackage::RADAR){
+    cout << "Before update radar:\n";
     UpdateRadar(meas_package);
+    cout << "After update radar:\n";
+    
   } else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+    cout << "Before update lidar:\n";
     UpdateLidar(meas_package);
+    cout << "After update lidar:\n";
   }
 }
 
@@ -245,6 +255,10 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   }
   
   VectorXd y = z - z_pred;
+  
+  while (y(1) > M_PI) y(1) -= 2.*M_PI;
+  while (y(1) < -M_PI) y(1) += 2.*M_PI;
+  
   //calculate innovation covariance matrix S
   S.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; i++){
@@ -272,7 +286,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
  MatrixXd K = Tc * S.inverse();
   
  //update state mean and covariance matrix
- x_ += K * (z - z_pred); //angle normalize might need here
+ x_ += K * y; //angle normalize might need here
  P_ -= K * S * K.transpose();
  
  NIS_radar_ = y.transpose() * S.inverse() * y;
@@ -290,8 +304,8 @@ void UKF::AugmentedSigmaPoints(MatrixXd *X_sample){
     
     MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
     P_aug.topLeftCorner(n_x_, n_x_) = P_;
-    P_aug(n_x_ + 1, n_x_ + 1) = std_a_ * std_a_;
-    P_aug(n_x_ + 2, n_x_ + 2) = std_yawdd_ * std_yawdd_;
+    P_aug(n_x_, n_x_) = std_a_ * std_a_; // index start from 0
+    P_aug(n_x_ + 1, n_x_ + 1) = std_yawdd_ * std_yawdd_;
     
     MatrixXd A = P_aug.llt().matrixL();
     MatrixXd sqrt_A = A * sqrt(lambda_ +  n_aug_);
