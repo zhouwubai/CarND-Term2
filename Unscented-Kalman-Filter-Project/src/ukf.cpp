@@ -102,15 +102,15 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     cout << "UKF: " << endl;
     
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR){
-        float rho = meas_package.raw_measurements_[0];
-        float yaw = meas_package.raw_measurements_[1];
-        float rho_dot = meas_package.raw_measurements_[2];
+        float rho = meas_package.raw_measurements_(0);
+        float yaw = meas_package.raw_measurements_(1);
+        float rho_dot = meas_package.raw_measurements_(2);
         float px = rho*cos(yaw);
         float py = rho*sin(yaw);
         // px, py, v, yaw, yawr, not sure about yawrd
         x_ << px, py, rho_dot, atan2(py, px), 0;
     } else if (meas_package.sensor_type_ == MeasurementPackage::LASER){
-        x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 0, 0, 0;
+        x_ << meas_package.raw_measurements_(0), meas_package.raw_measurements_(1), 0, 0, 0;
     }
     
     time_us_ = meas_package.timestamp_;
