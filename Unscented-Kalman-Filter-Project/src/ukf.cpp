@@ -263,24 +263,17 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   }
   
   VectorXd y = z - z_pred;
-  while (y(1) > M_PI) y(1) -= 2.*M_PI;
-  while (y(1) < -M_PI) y(1) += 2.*M_PI;
+  y(1) = NormalizeAngle(y(1));
   
   //calculate innovation covariance matrix S
   for (int i = 0; i < 2 * n_aug_ + 1; i++){
     VectorXd z_diff = Zsig.col(i) - z_pred;
-    
-    // normalize the angle
-    while (z_diff(1) > M_PI) z_diff(1) -= 2.*M_PI;
-    while (z_diff(1) < -M_PI) z_diff(1) += 2.*M_PI;
+    z_diff(1) = NormalizeAngle(z_diff(1));
     
     S += weights_(i) * (z_diff * z_diff.transpose());
     
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
-    
-    // normalize the angle
-    while (x_diff(1) > M_PI) x_diff(1) -= 2.*M_PI;
-    while (x_diff(1) < -M_PI) x_diff(1) += 2.*M_PI;
+    x_diff(1) = NormalizeAngle(x_diff(1));
     
     Tc += weights_(i) * x_diff * z_diff.transpose();
     
@@ -392,16 +385,24 @@ void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out, MatrixXd& X
   }
   
   for(int i = 0; i < 2 * n_aug_ + 1; i++){
-    VectorXd residual = X_pred.col(i) - x;
+    VectorXd x_diff = X_pred.col(i) - x;
+    x_diff(3) = NormalizeAngle(x_diff(3));
     
-    //angle normalization
-    while (residual(3) > M_PI) residual(3) -= 2.*M_PI;
-    while (residual(3) < -M_PI) residual(3) += 2.*M_PI;
-    
-    P += weights_(i) * (residual * residual.transpose());
+    P += weights_(i) * (x_diff * x_diff.transpose());
   }
   
   //write result
   *x_out = x;
   *P_out = P;
+}
+
+
+/**
+* normalize angle to interval [-PI, PI]
+* @Param {float} angle
+*/
+float UKF::NormalizeAngle(float angle){
+    while (angle > M_PI) angle -= 2.*M_PI;
+    while (angle < -M_PI) angle += 2.*M_PI;
+    return angle;
 }

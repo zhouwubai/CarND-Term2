@@ -125,6 +125,7 @@ public:
   
   void PredictMeanAndCovariance(VectorXd* x_pred, MatrixXd* P_pred, MatrixXd& X_pred);
 
+  float NormalizeAngle(float angle);
 };
 
 #endif /* UKF_H */
