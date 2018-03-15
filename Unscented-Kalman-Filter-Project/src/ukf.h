@@ -108,7 +108,10 @@ public:
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
    */
+   
   void UpdateLidar(MeasurementPackage meas_package);
+  void UpdateLidarDirect(MeasurementPackage meas_package);
+  void UpdateLidarApprox(MeasurementPackage meas_package);
 
   /**
    * Updates the state and the state covariance matrix using a radar measurement

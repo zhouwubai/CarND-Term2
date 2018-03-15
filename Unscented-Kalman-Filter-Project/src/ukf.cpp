@@ -13,7 +13,7 @@ using std::vector;
  */
 UKF::UKF() {
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = false;
+  use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
@@ -29,7 +29,7 @@ UKF::UKF() {
         0, 0, 0, 0, 1;
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 3;
+  std_a_ = 1.0;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
   std_yawdd_ = 0.7;
@@ -137,11 +137,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     float delta_t = (meas_package.timestamp_ - time_us_) / 1000000.0;
     time_us_ = meas_package.timestamp_;
     
-    cout << "Before predit:\n";
-    cout << x_ << endl;
     Prediction(delta_t);
-    cout << "After pred:\n";
-    cout << x_ << endl;
   
    /*****************************************************************************
    *  Update
@@ -151,14 +147,14 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   [x] update: almost same as EKF, just use sampling instead jacobian matrix
   */
   if (meas_package.sensor_type_ == MeasurementPackage::RADAR){
-    cout << "Before update radar:\n";
     UpdateRadar(meas_package);
-    cout << "After update radar:\n";
+    cout << "NIS Radar:\n";
+    cout << NIS_radar_ << endl;
     
   } else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
-    cout << "Before update lidar:\n";
     UpdateLidar(meas_package);
-    cout << "After update lidar:\n";
+    cout << "NIS laser:\n";
+    cout << NIS_laser_ << endl;
   }
 }
 
@@ -193,6 +189,11 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   
   You'll also need to calculate the lidar NIS.
   */
+  //UpdateLidarDirect(meas_package);
+  UpdateLidarApprox(meas_package);
+}
+
+void UKF::UpdateLidarDirect(MeasurementPackage meas_package) {
   VectorXd z = meas_package.raw_measurements_;
   VectorXd z_pred = H_laser_ * x_;
   VectorXd y = z - z_pred;
@@ -205,6 +206,56 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   x_ += K * y;
   P_ -= K * H_laser_ * P_;
   NIS_laser_ = y.transpose() * S_inv * y;
+}
+
+void UKF::UpdateLidarApprox(MeasurementPackage meas_package){
+  VectorXd z = meas_package.raw_measurements_;
+  
+  //create matrix for sigma points in measurement space
+  MatrixXd Zsig = MatrixXd::Zero(n_z_laser_, 2 * n_aug_ + 1);
+
+  //transform sigma points into measurement space
+  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+  
+    Zsig(0, i) = Xsig_pred_(0, i);
+    Zsig(1, i) = Xsig_pred_(1, i);
+  }
+  
+  //mean predicted measurement
+  VectorXd z_pred = VectorXd::Zero(n_z_laser_);
+  
+  //measurement covariance matrix S
+  MatrixXd S = MatrixXd::Zero(n_z_laser_,n_z_laser_);
+  
+  //create matrix for cross correlation Tc
+  MatrixXd Tc = MatrixXd::Zero(n_x_, n_z_laser_);
+ 
+  //calculate mean predicted measurement
+  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+    z_pred += weights_(i) * Zsig.col(i);
+  }
+
+  //calculate innovation covariance matrix S
+  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+    S += weights_(i) * (z_diff * z_diff.transpose());
+    
+    VectorXd x_diff = Xsig_pred_.col(i) - x_;
+    Tc += weights_(i) * x_diff * z_diff.transpose();
+  }
+  
+ // Add measurement covariance R_radar_ matrix
+ S += R_laser_;
+  
+ //calculate Kalman gain K;
+ MatrixXd K = Tc * S.inverse();
+
+ VectorXd y = z - z_pred;
+ //update state mean and covariance matrix
+ x_ += K * y; //angle normalize might need here
+ P_ -= K * S * K.transpose();
+ 
+ NIS_laser_ = y.transpose() * S.inverse() * y;
 }
 
 /**
@@ -223,7 +274,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   VectorXd z = meas_package.raw_measurements_;
   
   //create matrix for sigma points in measurement space
-  MatrixXd Zsig = MatrixXd(n_z_radar_, 2 * n_aug_ + 1);
+  MatrixXd Zsig = MatrixXd::Zero(n_z_radar_, 2 * n_aug_ + 1);
 
   //transform sigma points into measurement space
   for (int i = 0; i < 2 * n_aug_ + 1; i++){
