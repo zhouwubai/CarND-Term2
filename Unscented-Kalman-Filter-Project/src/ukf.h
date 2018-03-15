@@ -124,9 +124,6 @@ public:
   
   
   void PredictMeanAndCovariance(VectorXd* x_pred, MatrixXd* P_pred, MatrixXd& X_pred);
-  
-  
-  void PredictRadarMeasurement(VectorXd& z);
 
 };
 

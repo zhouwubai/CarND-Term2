@@ -212,7 +212,70 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   You'll also need to calculate the radar NIS.
   */
   VectorXd z = meas_package.raw_measurements_;
-  PredictRadarMeasurement(z);
+  
+  //create matrix for sigma points in measurement space
+  MatrixXd Zsig = MatrixXd(n_z_radar_, 2 * n_aug_ + 1);
+
+  //mean predicted measurement
+  VectorXd z_pred = VectorXd(n_z_radar_);
+  
+  //measurement covariance matrix S
+  MatrixXd S = MatrixXd(n_z_radar_,n_z_radar_);
+
+  //transform sigma points into measurement space
+  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+  
+    float px = Xsig_pred_(0, i);
+    if (px == 0) px = 0.0001;  // avoid division by zero
+    
+    float py = Xsig_pred_(1, i);
+    float v = Xsig_pred_(2, i);
+    float rho = Xsig_pred_(3, i);
+    float dist = sqrt(px * px + py * py);  // this wont be zero
+    
+    VectorXd z_sig(n_z_radar_);
+    z_sig << dist, atan2(py, px), (px*v*cos(rho) + py*v*sin(rho))/dist;
+    Zsig.col(i) = z_sig;
+  }
+  
+  //calculate mean predicted measurement
+  z_pred.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+    z_pred += weights_(i) * Zsig.col(i);
+  }
+  
+  VectorXd y = z - z_pred;
+  //calculate innovation covariance matrix S
+  S.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++){
+    VectorXd residual = Zsig.col(i) - z_pred;
+    
+    // normalize the angle
+    while (residual(1) > M_PI) residual(1) -= 2.*M_PI;
+    while (residual(1) < -M_PI) residual(1) += 2.*M_PI;
+    
+    S += weights_(i) * (residual * residual.transpose());
+  }
+  
+ // Add measurement covariance R_radar_ matrix
+ S += R_radar_;
+ 
+ // Calculate Kalman Gain K
+ //create matrix for cross correlation Tc
+ MatrixXd Tc = MatrixXd(n_x_, n_z_radar_);
+ Tc.fill(0.0);
+ for (int i = 0; i < 2 * n_aug_ + 1; i++){
+   Tc += weights_(i) * (Xsig_pred_.col(i) - x_) * (Zsig.col(i) - z_pred).transpose();
+ }
+  
+ //calculate Kalman gain K;
+ MatrixXd K = Tc * S.inverse();
+  
+ //update state mean and covariance matrix
+ x_ += K * (z - z_pred); //angle normalize might need here
+ P_ -= K * S * K.transpose();
+ 
+ NIS_radar_ = y.transpose() * S.inverse() * y;
 }
 
 /**
@@ -322,73 +385,4 @@ void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out, MatrixXd& X
   //write result
   *x_out = x;
   *P_out = P;
-}
-
-
-/**
-* Map from augmented sigma points to predict measurements
-* @Param {VectorXd&} z: the measurement, r, phi, r_dot
-*/
-void UKF::PredictRadarMeasurement(VectorXd& z) {
-
-  //create matrix for sigma points in measurement space
-  MatrixXd Zsig = MatrixXd(n_z_radar_, 2 * n_aug_ + 1);
-
-  //mean predicted measurement
-  VectorXd z_pred = VectorXd(n_z_radar_);
-  
-  //measurement covariance matrix S
-  MatrixXd S = MatrixXd(n_z_radar_,n_z_radar_);
-
-  //transform sigma points into measurement space
-  for (int i = 0; i < 2 * n_aug_ + 1; i++){
-  
-    float px = Xsig_pred_(0, i);
-    if (px == 0) px = 0.0001;  // avoid division by zero
-    
-    float py = Xsig_pred_(1, i);
-    float v = Xsig_pred_(2, i);
-    float rho = Xsig_pred_(3, i);
-    float dist = sqrt(px * px + py * py);  // this wont be zero
-    
-    VectorXd z_sig(n_z_radar_);
-    z_sig << dist, atan2(py, px), (px*v*cos(rho) + py*v*sin(rho))/dist;
-    Zsig.col(i) = z_sig;
-  }
-  
-  //calculate mean predicted measurement
-  z_pred.fill(0.0);
-  for (int i = 0; i < 2 * n_aug_ + 1; i++){
-    z_pred += weights_(i) * Zsig.col(i);
-  }
-  
-  //calculate innovation covariance matrix S
-  S.fill(0.0);
-  for (int i = 0; i < 2 * n_aug_ + 1; i++){
-    VectorXd residual = Zsig.col(i) - z_pred;
-    
-    // normalize the angle
-    while (residual(1) > M_PI) residual(1) -= 2.*M_PI;
-    while (residual(1) < -M_PI) residual(1) += 2.*M_PI;
-    
-    S += weights_(i) * (residual * residual.transpose());
-  }
-  
- // Add measurement covariance R_radar_ matrix
- S += R_radar_;
- 
- // Calculate Kalman Gain K
- //create matrix for cross correlation Tc
- MatrixXd Tc = MatrixXd(n_x_, n_z_radar_);
- Tc.fill(0.0);
- for (int i = 0; i < 2 * n_aug_ + 1; i++){
-   Tc += weights_(i) * (Xsig_pred_.col(i) - x_) * (Zsig.col(i) - z_pred).transpose();
- }
-  
- //calculate Kalman gain K;
- MatrixXd K = Tc * S.inverse();
-  
- //update state mean and covariance matrix
- x_ += K * (z - z_pred); //angle normalize might need here
- P_ -= K * S * K.transpose();
 }
