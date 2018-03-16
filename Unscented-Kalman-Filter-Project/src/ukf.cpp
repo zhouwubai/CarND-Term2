@@ -135,7 +135,15 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
    */
     
     float delta_t = (meas_package.timestamp_ - time_us_) / 1000000.0;
+    cout << delta_t <<endl;
     time_us_ = meas_package.timestamp_;
+    
+    // small granualarity on prediciton
+    float interval = 0.05;
+    while(delta_t > interval){
+        Prediction(interval);
+        delta_t -= interval;
+    }
     
     Prediction(delta_t);
   
@@ -189,8 +197,8 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   
   You'll also need to calculate the lidar NIS.
   */
-  //UpdateLidarDirect(meas_package);
-  UpdateLidarApprox(meas_package);
+  UpdateLidarDirect(meas_package);
+  //UpdateLidarApprox(meas_package);
 }
 
 void UKF::UpdateLidarDirect(MeasurementPackage meas_package) {
@@ -198,7 +206,7 @@ void UKF::UpdateLidarDirect(MeasurementPackage meas_package) {
   VectorXd z_pred = H_laser_ * x_;
   VectorXd y = z - z_pred;
   MatrixXd H_t = H_laser_.transpose();
-  MatrixXd S = H_laser_ * P_ * H_t;
+  MatrixXd S = H_laser_ * P_ * H_t + R_laser_;
   MatrixXd S_inv = S.inverse();
   MatrixXd K = P_ * H_t * S_inv;
 
