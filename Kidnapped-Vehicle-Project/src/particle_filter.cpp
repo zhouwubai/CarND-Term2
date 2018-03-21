@@ -81,12 +81,19 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     
 }
 
-void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
+void ParticleFilter::dataAssociation(std::vector<Map::single_landmark_s> landmarks, std::vector<LandmarkObs>& observations, double sensor_range) {
 	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
-
+    
+    /**
+    * observation id ? need to be set
+    * 1. transform observations from vechicle coordinate to map coordinate
+    * 2. data association (delete one when it matches)
+    */
+    
+    
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -101,6 +108,43 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+    
+    for (int ii = 0; ii < num_particles; ii++){
+        
+        Particle& cur_p = particles[ii];
+        double p_x = cur_p.x;
+        double p_y = cur_p.y;
+        double p_theta = cur_p.theta;
+        
+        std::vector<LandmarkObs> map_obs;
+        
+        for (int jj = 0; jj < observations.size(); jj ++){
+
+            double ob_xc = observations[jj].x;
+            double ob_yc = observations[jj].y;
+            
+            // transform observations to global map coordinate
+            LandmarkObs ob_m;
+            ob_m.x = p_x + cos(p_theta) * ob_xc + sin(p_theta) * ob_yc;
+            ob_m.y = p_y - sin(p_theta) * ob_xc + cos(p_theta) * ob_yc;
+            
+            map_obs.push_back(ob_m);
+        }//END_FOR JJ
+        
+        dataAssociation(map_landmarks.landmark_list, map_obs, sensor_range);
+        std::vector<int> associations;
+        std::vector<double> sense_x;
+        std::vector<double> sense_y;
+        for (int jj = 0; jj < map_obs.size(); jj++){
+            associations.push_back(map_obs[jj].id);
+            sense_x.push_back(map_obs[jj].x);
+            sense_y.push_back(map_obs[jj].y);
+        }
+        SetAssociations(cur_p, associations, sense_x, sense_y);
+        
+        //update weight for current particle
+        
+    }
 }
 
 void ParticleFilter::resample() {
@@ -117,10 +161,17 @@ Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<i
     // associations: The landmark id that goes along with each listed association
     // sense_x: the associations x mapping already converted to world coordinates
     // sense_y: the associations y mapping already converted to world coordinates
+   
+    //Clear the previous associations
+    particle.associations.clear();
+    particle.sense_x.clear();
+    particle.sense_y.clear();
 
     particle.associations= associations;
     particle.sense_x = sense_x;
     particle.sense_y = sense_y;
+    
+    return particle;
 }
 
 string ParticleFilter::getAssociations(Particle best)
