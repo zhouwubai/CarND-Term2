@@ -39,7 +39,7 @@ void ParticleFilter::init(double x, double y, double theta, double gps_std[]) {
             dist_theta(gen),
             1.0 / num_particles // inital weight
         };
-        p.theta = normalize_angle(p.theta);
+        // p.theta = normalize_angle(p.theta);
         particles.push_back(p);
     }
     is_initialized = true;
@@ -79,7 +79,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         p.x += dist_x(gen);
         p.y += dist_y(gen);
         p.theta += dist_theta(gen);
-        p.theta = normalize_angle(p.theta);
+        // p.theta = normalize_angle(p.theta);
     }
 }
 
