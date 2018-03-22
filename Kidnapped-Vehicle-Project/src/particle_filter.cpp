@@ -64,8 +64,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         double sin_theta = sin(p.theta);
         
         if(fabs(yaw_rate) < 0.001){
-            p.x += velocity * cos_theta;
-            p.y += velocity * sin_theta;
+            p.x += velocity * delta_t * cos_theta;
+            p.y += velocity * delta_t * sin_theta;
         } else {
             double v_rawd = velocity / yaw_rate;
             double max_yaw = p.theta + yaw_rate * delta_t;
@@ -76,23 +76,10 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         // add noise
         p.x += dist_x(gen);
         p.y += dist_y(gen);
+        
+        // TODO: normalize ?
         p.theta += dist_theta(gen);
     }
-    
-}
-
-void ParticleFilter::dataAssociation(std::vector<Map::single_landmark_s> landmarks, std::vector<LandmarkObs>& observations, double sensor_range) {
-	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
-	//   observed measurement to this particular landmark.
-	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
-	//   implement this method and use it as a helper during the updateWeights phase.
-    
-    /**
-    * observation id ? need to be set
-    * 1. transform observations from vechicle coordinate to map coordinate
-    * 2. data association (delete one when it matches)
-    */
-    
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -170,8 +157,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             weight *= prob(x_f, y_f, std_landmark[0], std_landmark[1], obs_x, obs_y);
             
             associations.push_back(id_i);
-            sense_x.push_back(x_f);
-            sense_y.push_back(y_f);
+            sense_x.push_back(obs_x);
+            sense_y.push_back(obs_y);
             
         }
         

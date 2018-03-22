@@ -74,15 +74,6 @@ public:
 	void prediction(double delta_t, double std_pos[], double velocity, double yaw_rate);
 	
 	/**
-	 * dataAssociation Finds which observations correspond to which landmarks (likely by using
-	 *   a nearest-neighbors data association).
-	 * @param map landmark_lists
-	 * @param observations Vector of landmark observations
-     * @param sensor range for more efficient associations
-	 */
-	void dataAssociation(std::vector<Map::single_landmark_s> landmarks, std::vector<LandmarkObs>& observations, double sensor_range);
-	
-	/**
 	 * updateWeights Updates the weights for each particle based on the likelihood of the 
 	 *   observed measurements. 
 	 * @param sensor_range Range [m] of sensor
