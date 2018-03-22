@@ -93,7 +93,6 @@ void ParticleFilter::dataAssociation(std::vector<Map::single_landmark_s> landmar
     * 2. data association (delete one when it matches)
     */
     
-    
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -108,6 +107,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+    
+    std::vector<Map::single_landmark_s> landmark_list = map_landmarks.landmark_list;
     
     for (int ii = 0; ii < num_particles; ii++){
         
@@ -131,19 +132,50 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             map_obs.push_back(ob_m);
         }//END_FOR JJ
         
-        dataAssociation(map_landmarks.landmark_list, map_obs, sensor_range);
+        std::vector<Map::single_landmark_s> landmarks;
+        // filter out those far away landmarks to improve data association speed
+        for(int jj=0; jj < landmark_list.size(); jj++){
+            if(dist(p_x, p_y, landmark_list[jj].x_f, landmark_list[jj].y_f) < sensor_range){
+                landmarks.push_back(landmark_list[jj]);
+            }
+        }
+        
         std::vector<int> associations;
         std::vector<double> sense_x;
         std::vector<double> sense_y;
+        double weight = 1.0;
+        
+        // data association and meanwhile calculate the weight
+        // allow one landmark been associate multiple times first
         for (int jj = 0; jj < map_obs.size(); jj++){
-            associations.push_back(map_obs[jj].id);
-            sense_x.push_back(map_obs[jj].x);
-            sense_y.push_back(map_obs[jj].y);
+            
+            double obs_x = map_obs[jj].x;
+            double obs_y = map_obs[jj].y;
+            
+            int best_index = -1;
+            double best_score = std::numeric_limits<double>::infinity();
+            
+            for(int kk = 0; kk < landmarks.size(); kk++){
+                double score = dist(obs_x, obs_y, landmarks[kk].x_f, landmarks[kk].y_f);
+                if( score < best_score){
+                    best_index = kk;
+                    best_score = score;
+                }
+            }
+            
+            int id_i = landmarks[best_index].id_i;
+            double x_f = landmarks[best_index].x_f;
+            double y_f = landmarks[best_index].y_f;
+            
+            
+            
+            associations.push_back(id_i);
+            sense_x.push_back(x_f);
+            sense_y.push_back(y_f);
+            
         }
+        
         SetAssociations(cur_p, associations, sense_x, sense_y);
-        
-        //update weight for current particle
-        
     }
 }
 
