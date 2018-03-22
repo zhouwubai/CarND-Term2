@@ -152,9 +152,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             double obs_x = map_obs[jj].x;
             double obs_y = map_obs[jj].y;
             
+            // nearest neighbor to find the association
             int best_index = -1;
             double best_score = std::numeric_limits<double>::infinity();
-            
             for(int kk = 0; kk < landmarks.size(); kk++){
                 double score = dist(obs_x, obs_y, landmarks[kk].x_f, landmarks[kk].y_f);
                 if( score < best_score){
@@ -167,7 +167,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             double x_f = landmarks[best_index].x_f;
             double y_f = landmarks[best_index].y_f;
             
-            
+            weight *= prob(x_f, y_f, std_landmark[0], std_landmark[1], obs_x, obs_y);
             
             associations.push_back(id_i);
             sense_x.push_back(x_f);
@@ -175,6 +175,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             
         }
         
+        // update the weight and associations
+        cur_p.weight = weight;
         SetAssociations(cur_p, associations, sense_x, sense_y);
     }
 }
@@ -183,7 +185,20 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-
+    
+    std::vector<double> weights;
+    for(int i = 0; i < particles.size(); i++){
+        weights.push_back(particles[i].weight);
+    }
+    
+    default_random_engine gen;
+    std::discrete_distribution<> d(weights.begin(), weights.end());
+    std::vector<Particle> new_particles;
+    for(int i = 0; i < particles.size(); i++){
+        int index = d(gen);
+        new_particles.push_back(particles[index]);
+    }
+    particles = new_particles;
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
