@@ -19,17 +19,17 @@
 
 using namespace std;
 
-void ParticleFilter::init(double x, double y, double theta, double std[]) {
+void ParticleFilter::init(double x, double y, double theta, double gps_std[]) {
 	// TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-    num_particles = 50;
+    num_particles = 500;
     
     default_random_engine gen;
-    normal_distribution<double> dist_x(x, std[0]);
-    normal_distribution<double> dist_y(y, std[1]);
-    normal_distribution<double> dist_theta(theta, std[2]);
+    normal_distribution<double> dist_x(x, gps_std[0]);
+    normal_distribution<double> dist_y(y, gps_std[1]);
+    normal_distribution<double> dist_theta(theta, gps_std[2]);
     
     for (int i = 0; i < num_particles; i++){
         Particle p = {
@@ -39,6 +39,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
             dist_theta(gen),
             1.0 / num_particles // inital weight
         };
+        p.theta = normalize_angle(p.theta);
         particles.push_back(p);
     }
     is_initialized = true;
@@ -71,6 +72,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
             double max_yaw = p.theta + yaw_rate * delta_t;
             p.x += v_rawd * (sin(max_yaw) - sin(p.theta));
             p.y += v_rawd * (cos(p.theta) - cos(max_yaw));
+            p.theta += yaw_rate * delta_t;
         }
         
         // add noise
@@ -79,6 +81,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         
         // TODO: normalize ?
         p.theta += dist_theta(gen);
+        p.theta = normalize_angle(p.theta);
     }
 }
 
@@ -122,9 +125,14 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         std::vector<Map::single_landmark_s> landmarks;
         // filter out those far away landmarks to improve data association speed
         for(int jj=0; jj < landmark_list.size(); jj++){
-            if(dist(p_x, p_y, landmark_list[jj].x_f, landmark_list[jj].y_f) < sensor_range){
+            double p_to_mark = dist(p_x, p_y, landmark_list[jj].x_f, landmark_list[jj].y_f);
+            if( p_to_mark < sensor_range){
                 landmarks.push_back(landmark_list[jj]);
             }
+        }
+        // What if landmarks.size() == 0 ?
+        if (landmarks.size() == 0){
+            cur_p.weight = 0.0;
         }
         
         std::vector<int> associations;
@@ -176,6 +184,7 @@ void ParticleFilter::resample() {
     std::vector<double> weights;
     for(int i = 0; i < particles.size(); i++){
         weights.push_back(particles[i].weight);
+        cout << weights[i] << endl;
     }
     
     default_random_engine gen;

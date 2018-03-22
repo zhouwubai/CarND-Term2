@@ -58,6 +58,14 @@ inline double dist(double x1, double y1, double x2, double y2) {
 	return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
+/*
+* normalize angle
+*/
+inline float normalize_angle(float angle){
+    while (angle > M_PI) angle -= 2.*M_PI;
+    while (angle < -M_PI) angle += 2.*M_PI;
+    return angle;
+}
 
 /*
  * Computes the probabilty of one observation associated with given landmark.
