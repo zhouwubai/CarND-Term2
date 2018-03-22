@@ -78,8 +78,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         // add noise
         p.x += dist_x(gen);
         p.y += dist_y(gen);
-        
-        // TODO: normalize ?
         p.theta += dist_theta(gen);
         p.theta = normalize_angle(p.theta);
     }
@@ -116,8 +114,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             
             // transform observations to global map coordinate
             LandmarkObs ob_m;
-            ob_m.x = p_x + cos(p_theta) * ob_xc + sin(p_theta) * ob_yc;
-            ob_m.y = p_y - sin(p_theta) * ob_xc + cos(p_theta) * ob_yc;
+            ob_m.x = p_x + cos(p_theta) * ob_xc - sin(p_theta) * ob_yc;
+            ob_m.y = p_y + sin(p_theta) * ob_xc + cos(p_theta) * ob_yc;
             
             map_obs.push_back(ob_m);
         }//END_FOR JJ
@@ -133,6 +131,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         // What if landmarks.size() == 0 ?
         if (landmarks.size() == 0){
             cur_p.weight = 0.0;
+            continue;
         }
         
         std::vector<int> associations;
@@ -184,7 +183,6 @@ void ParticleFilter::resample() {
     std::vector<double> weights;
     for(int i = 0; i < particles.size(); i++){
         weights.push_back(particles[i].weight);
-        cout << weights[i] << endl;
     }
     
     default_random_engine gen;
