@@ -1,7 +1,5 @@
 #include "PID.h"
 
-using namespace std;
-
 /*
 * TODO: Complete the PID class.
 */
@@ -11,23 +9,51 @@ PID::PID() {}
 PID::~PID() {}
 
 void PID::Init(double Kp, double Ki, double Kd) {
-    Kp_ = Kp;
-    Ki_ = Ki;
-    Kd_ = Kd;
     
-    p_error_ = 0.0;
-    d_error_ = 0.0;
-    i_error_ = 0.0;
+    coeffs_ = std::vector<double>{Kp, Ki, Kd};
+    errors_ = std::vector<double>(3, 0);
+    
+    std::cout << "Kp: " << coeffs_[0] << " Ki: " << coeffs_[1] << " Kd: " << coeffs_[2] << std::endl;
+}
+
+void PID::InitTwiddle(double delta_tol, double err_max, int n_max){
+    
+    tunning_finished_ = false;
+    
+    d_coeffs_ = std::vector<double>(3, 1);
+    
+    delta_tol_ = delta_tol;
+    
+    run_finished_ = false;
+    
+    run_err_max_ = err_max;
+    
+    run_avg_error_ = 0.0;
+    
+    run_n_max_ = n_max;
+
 }
 
 void PID::UpdateError(double cte) {
-    p_error_ = cte;
-    d_error_ = cte - d_error_;
-    i_error_ += cte;
+    errors_[0] = cte;
+    errors_[1] += cte;
+    errors_[2] = cte - errors_[2];
 }
 
 double PID::TotalError() {
-    double error = - Kp_ * p_error_ - Kd_ * d_error_ - Ki_ * i_error_;
-    return error;
+    double total_err = 0.0;
+    for (int i = 0; i < coeffs_.size(); i++){
+        total_err -= coeffs_[i] * errors_[i];
+    }
+    
+    return total_err;
 }
 
+double PID::Run(double cte){
+
+}
+
+double PID::Twiddle(double cte){
+    
+    
+}
