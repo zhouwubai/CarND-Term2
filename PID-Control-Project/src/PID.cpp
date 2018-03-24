@@ -16,22 +16,26 @@ void PID::Init(double Kp, double Ki, double Kd) {
     std::cout << "Kp: " << coeffs_[0] << " Ki: " << coeffs_[1] << " Kd: " << coeffs_[2] << std::endl;
 }
 
-void PID::InitTwiddle(double delta_tol, double err_max, int n_max){
+void PID::InitTwiddle(double delta_tol, double err_max, int n_min, int n_max){
     
     tunning_finished_ = false;
-    
     d_coeffs_ = std::vector<double>(3, 1);
-    
+    coeffs_idx_ = 0;
+    twiddle_state_ = 0;
     delta_tol_ = delta_tol;
-    
-    run_finished_ = false;
+    best_error_ = std::numeric_limits<double>::max();
     
     run_err_max_ = err_max;
-    
-    run_avg_error_ = 0.0;
-    
+    run_n_min_ = n_min;
     run_n_max_ = n_max;
+    
+    ResetRun();
+}
 
+void PID::ResetRun(){
+    run_finished_ = false;
+    run_error_ = 0.0;
+    run_steps_ = 0;
 }
 
 void PID::UpdateError(double cte) {
@@ -49,11 +53,95 @@ double PID::TotalError() {
     return total_err;
 }
 
-double PID::Run(double cte){
 
+void PID::Run(double cte){
+    
+    // only consider steps after several warmup
+    if (run_steps_ > run_n_min_){
+        run_error_ += cte * cte;
+    }
+    run_steps_ ++;
+    
+    /*
+    * Two parameter control each run, if it runs to run_n_max_ steps
+    * if cte > run_err_max_, it means it is losing control so terminate run earlier
+    */
+    if (run_steps_ > run_n_max_ || cte > run_err_max_){
+        run_finished_ = true;
+    }
 }
 
-double PID::Twiddle(double cte){
+
+double PID::RunError(){
+
+    double avg_err = 0.0;
+    if (run_steps_ < run_n_min_){
+        avg_err = std::numeric_limits<double>::max();
+    } else {
+        avg_err = run_error_ / (run_steps_ - run_n_min_);
+    }
+    return avg_err;
+}
+
+
+void PID::Twiddle(){
     
+    double d_sum = 0.0;
+    for (int i = 0; i < d_coeffs_.size(); i++){
+        d_sum += d_coeffs_[i];
+    }
     
+    double err = 0.0;
+    // twiddle finished standard
+    if (d_sum > delta_tol_){
+    
+        switch (twiddle_state_) {
+            case 0:
+                // just started for current parameter
+                coeffs_[coeffs_idx_] += d_coeffs_[coeffs_idx_];
+                twiddle_state_ = 1;
+                break;
+                
+            case 1:
+                // added delta, now check the avg_error
+                err = RunError();
+                if (err < best_error_){
+                    best_error_ = err;
+                    d_coeffs_[coeffs_idx_] *= 1.1;
+                    
+                    // restart for next parameter
+                    twiddle_state_ = 0;
+                    coeffs_idx_ += 1;
+                    coeffs_idx_ = coeffs_idx_ % 3;
+                } else {
+                    coeffs_[coeffs_idx_] -= 2 * d_coeffs_[coeffs_idx_];
+                    twiddle_state_ = 2;
+                }
+                break;
+            
+            case 2:
+                // decrease delta, now check the avg_error
+                err = RunError();
+                if (err < best_error_){
+                    best_error_ = err;
+                    d_coeffs_[coeffs_idx_] *= 1.1;
+                } else {
+                    // tried increase and decrease, all failed, try small delta
+                    coeffs_[coeffs_idx_] += d_coeffs_[coeffs_idx_];
+                    d_coeffs_[coeffs_idx_] *= 0.9;
+                }
+                
+                // restart next parameters
+                twiddle_state_ = 0;
+                coeffs_idx_ += 1;
+                coeffs_idx_ = coeffs_idx_ % 3;
+                break;
+                
+            default:
+                break;
+        }//END_SWITCH
+        
+    } else {
+        tunning_finished_ = true;
+    }
 }

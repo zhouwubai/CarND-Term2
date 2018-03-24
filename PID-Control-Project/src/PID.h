@@ -17,7 +17,7 @@ public:
   std::vector<double> coeffs_;
   
   /*
-  * variable for auto tunning
+  * variable for twiddle
   */
   
   bool tunning_finished_;
@@ -26,13 +26,27 @@ public:
     
   double delta_tol_;
   
+  int coeffs_idx_;
+  
+  int twiddle_state_;
+  
+  double best_error_;
+  
+  
+  /*
+  * variable for run
+  */
   bool run_finished_;
   
   double run_err_max_;
   
-  double run_avg_error_;
+  int run_n_min_;
   
   int run_n_max_;
+  
+  double run_error_;
+  
+  int run_steps_;
   
   /*
   * Constructor
@@ -52,7 +66,7 @@ public:
   /*
   * Initialize twiddle setting
   */
-  void InitTwiddle(double delta_tol, double err_max, int n_max);
+  void InitTwiddle(double delta_tol, double err_max, int n_min, int n_max);
 
   /*
   * Update the PID error variables given cross track error.
@@ -67,9 +81,13 @@ public:
   /*
   * auto tunning the parameters
   */
-  double Run(double cte);
+  void ResetRun();
   
-  double Twiddle(double cte);
+  void Run(double cte);
+  
+  double RunError();
+  
+  void Twiddle();
   
 };
 
