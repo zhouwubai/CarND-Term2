@@ -45,15 +45,20 @@ int main()
 
   PID pid;
   // TODO: Initialize the pid variable.
-  pid.Init(1.0, 0.0, 0.0);
-  // 2.2 is the half of lane width
-  pid.InitTwiddle(0.2, 2.0, 50, 5000);
+  std::vector<double> coeffs{0.875299, 0.0, 0.3101};
+  pid.Init(coeffs);
   
-  const double target_speed = 30;
+  // the second is the maximum cte allowed, decrease it to improve the quality
+  // 0.107811 di: 0.059049 dd: 0.11979
+  std::vector<double> d_coeffs{0.0707348, 0.038742, 0.0707348};
+  pid.InitTwiddle(false, 0.01, 1.4, 100, 10000, d_coeffs);
+  
+  
   PID speed_pid;
-  speed_pid.Init(0.1, 0, 0);
+  std::vector<double> coeffs2{0.2, 0, 0.001};
+  speed_pid.Init(coeffs2);
 
-  h.onMessage([&pid, &speed_pid, &target_speed](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  h.onMessage([&pid, &speed_pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -70,6 +75,7 @@ int main()
           
           // angle can be used to adjust steer_value
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
+          double exist_steer = deg2rad(angle);
           double steer_value;
 
           /*
@@ -106,6 +112,8 @@ int main()
           steer_value = pid.TotalError();
           steer_value = clip(steer_value, 1.0);
           
+          // slow down when doing sharp turn
+          double target_speed = 30.*(1.-abs(steer_value)) + 20.;
           double throttle_value;
           speed_pid.UpdateError(speed - target_speed);
           throttle_value = speed_pid.TotalError();
@@ -113,7 +121,9 @@ int main()
           
           /*
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          std::cout << "CTE: " << cte << std::endl;
+          std::cout << "Steering Value: " << steer_value << std::endl;
+          std::cout << "Angle Value: " << exist_steer << std::endl;
           */
           
           json msgJson;

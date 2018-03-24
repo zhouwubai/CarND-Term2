@@ -9,18 +9,18 @@ PID::PID() {}
 
 PID::~PID() {}
 
-void PID::Init(double Kp, double Ki, double Kd) {
+void PID::Init(std::vector<double> coeffs) {
     
-    coeffs_ = std::vector<double>{Kp, Ki, Kd};
+    coeffs_ = coeffs;
     errors_ = std::vector<double>(3, 0);
     
     std::cout << "Kp: " << coeffs_[0] << " Ki: " << coeffs_[1] << " Kd: " << coeffs_[2] << std::endl;
 }
 
-void PID::InitTwiddle(double delta_tol, double err_max, int n_min, int n_max){
+void PID::InitTwiddle(bool finished, double delta_tol, double err_max, int n_min, int n_max, std::vector<double> d_coeffs){
     
-    tunning_finished_ = false;
-    d_coeffs_ = std::vector<double>(3, 1);
+    tunning_finished_ = finished;
+    d_coeffs_ = d_coeffs;
     coeffs_idx_ = 0;
     twiddle_state_ = 0;
     delta_tol_ = delta_tol;
@@ -91,7 +91,7 @@ double PID::RunError(){
     }
     
     // consider the steps time_lever in (0, 1]
-    double time_lever = exp(1.0 -  run_n_max_ / (double) run_steps_);
+    double time_lever = exp(1.0 -  run_n_max_ / (double) run_steps_ );
     avg_err /= time_lever;
     
     return avg_err;
@@ -171,6 +171,7 @@ void PID::Twiddle(){
         //output best_error_
         std::cout << "state: " << twiddle_state_ << " index: " << coeffs_idx_ << std::endl;
         std::cout << "Kp: " << coeffs_[0] << " Ki: " << coeffs_[1] << " Kd: " << coeffs_[2] << std::endl;
+        std::cout << "dp: " << d_coeffs_[0] << " di: " << d_coeffs_[1] << " dd: " << d_coeffs_[2] << std::endl;
         std::cout << "best error: " << best_error_ << std::endl;
         
     } else {

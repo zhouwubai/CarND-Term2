@@ -61,12 +61,12 @@ public:
   /*
   * Initialize PID.
   */
-  void Init(double Kp, double Ki, double Kd);
+  void Init(std::vector<double> coeffs);
 
   /*
   * Initialize twiddle setting
   */
-  void InitTwiddle(double delta_tol, double err_max, int n_min, int n_max);
+  void InitTwiddle(bool finished, double delta_tol, double err_max, int n_min, int n_max, std::vector<double> d_coeffs);
 
   /*
   * Update the PID error variables given cross track error.
