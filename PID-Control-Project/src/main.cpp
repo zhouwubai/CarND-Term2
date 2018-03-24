@@ -46,6 +46,8 @@ int main()
   PID pid;
   // TODO: Initialize the pid variable.
   pid.Init(1.5, 0.002, 6.0);
+  // 2.2 is the half of lane width
+  pid.InitTwiddle(0.2, 2.2, 50, 500);
   
   const double target_speed = 20;
   PID speed_pid;
@@ -74,6 +76,19 @@ int main()
           * NOTE: Feel free to play around with the throttle and speed. Maybe use
           * another PID controller to control the speed!
           */
+          
+          // tunning
+          if (pid.tunning_finished_ == false){
+              // twiddle on different set of parameters
+              if (pid.run_finished_){
+                  pid.Twiddle();
+                  pid.ResetRun();
+              } else {
+                  pid.Run(cte);
+              }
+          }
+          
+          // normal run
           pid.UpdateError(cte);
           steer_value = pid.TotalError();
           steer_value = clip(steer_value, 1.0);

@@ -1,4 +1,5 @@
 #include "PID.h"
+#include <math.h>
 
 /*
 * TODO: Complete the PID class.
@@ -66,7 +67,7 @@ void PID::Run(double cte){
     * Two parameter control each run, if it runs to run_n_max_ steps
     * if cte > run_err_max_, it means it is losing control so terminate run earlier
     */
-    if (run_steps_ > run_n_max_ || cte > run_err_max_){
+    if (run_steps_ > run_n_max_ || fabs(cte) > run_err_max_){
         run_finished_ = true;
     }
 }
@@ -97,12 +98,18 @@ void PID::Twiddle(){
     
         switch (twiddle_state_) {
             case 0:
-                // just started for current parameter
-                coeffs_[coeffs_idx_] += d_coeffs_[coeffs_idx_];
+                //initial twiddle, just udpate the best_error
+                best_error_ = RunError();
                 twiddle_state_ = 1;
                 break;
                 
             case 1:
+                // add delta for new parameters
+                coeffs_[coeffs_idx_] += d_coeffs_[coeffs_idx_];
+                twiddle_state_ = 2;
+                break;
+                
+            case 2:
                 // added delta, now check the avg_error
                 err = RunError();
                 if (err < best_error_){
@@ -110,17 +117,18 @@ void PID::Twiddle(){
                     d_coeffs_[coeffs_idx_] *= 1.1;
                     
                     // restart for next parameter
-                    twiddle_state_ = 0;
+                    twiddle_state_ = 1;
                     coeffs_idx_ += 1;
                     coeffs_idx_ = coeffs_idx_ % 3;
                 } else {
+                    // add delta fail, try decrease
                     coeffs_[coeffs_idx_] -= 2 * d_coeffs_[coeffs_idx_];
-                    twiddle_state_ = 2;
+                    twiddle_state_ = 3;
                 }
                 break;
             
-            case 2:
-                // decrease delta, now check the avg_error
+            case 3:
+                // decreased delta, now check the avg_error
                 err = RunError();
                 if (err < best_error_){
                     best_error_ = err;
@@ -131,8 +139,8 @@ void PID::Twiddle(){
                     d_coeffs_[coeffs_idx_] *= 0.9;
                 }
                 
-                // restart next parameters
-                twiddle_state_ = 0;
+                // restart next parameter
+                twiddle_state_ = 1;
                 coeffs_idx_ += 1;
                 coeffs_idx_ = coeffs_idx_ % 3;
                 break;
@@ -141,7 +149,12 @@ void PID::Twiddle(){
                 break;
         }//END_SWITCH
         
+        //output best_error_
+        std::cout << "best error: " << best_error_ << std::endl;
+        
     } else {
         tunning_finished_ = true;
+        // output best parameters
+        std::cout << "Kp: " << coeffs_[0] << " Ki: " << coeffs_[1] << " Kd: " << coeffs_[2] << std::endl;
     }
 }
