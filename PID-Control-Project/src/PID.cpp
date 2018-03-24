@@ -37,6 +37,9 @@ void PID::ResetRun(){
     run_finished_ = false;
     run_error_ = 0.0;
     run_steps_ = 0;
+    
+    // set errors_ to 0
+    std::fill(errors_.begin(), errors_.end(), 0);
 }
 
 void PID::UpdateError(double cte) {
@@ -73,20 +76,36 @@ void PID::Run(double cte){
 }
 
 
+/*
+* calculate average error for each run
+* Note: this should consider running step, more the better
+*/
 double PID::RunError(){
 
     double avg_err = 0.0;
+    // if it fail even before run_n_min_, set error max
     if (run_steps_ < run_n_min_){
         avg_err = std::numeric_limits<double>::max();
     } else {
         avg_err = run_error_ / (run_steps_ - run_n_min_);
     }
+    
+    // consider the steps time_lever in (0, 1]
+    double time_lever = exp(1.0 -  run_n_max_ / (double) run_steps_);
+    avg_err /= time_lever;
+    
     return avg_err;
 }
 
 
 void PID::Twiddle(){
     
+    if (run_finished_ == false){
+        std::cout << "Last run has not finished yet." << std::endl;
+        return;
+    }
+    
+    // calculate the sum of delta
     double d_sum = 0.0;
     for (int i = 0; i < d_coeffs_.size(); i++){
         d_sum += d_coeffs_[i];
@@ -150,11 +169,14 @@ void PID::Twiddle(){
         }//END_SWITCH
         
         //output best_error_
+        std::cout << "state: " << twiddle_state_ << " index: " << coeffs_idx_ << std::endl;
+        std::cout << "Kp: " << coeffs_[0] << " Ki: " << coeffs_[1] << " Kd: " << coeffs_[2] << std::endl;
         std::cout << "best error: " << best_error_ << std::endl;
         
     } else {
         tunning_finished_ = true;
         // output best parameters
+        std::cout << "Tunning finished" << std::endl;
         std::cout << "Kp: " << coeffs_[0] << " Ki: " << coeffs_[1] << " Kd: " << coeffs_[2] << std::endl;
     }
 }
