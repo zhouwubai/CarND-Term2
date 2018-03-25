@@ -12,7 +12,11 @@ public:
   std::vector<double> errors_;
 
   /*
-  * Coefficients
+  * Coefficients, P, I, D.
+  * P controls the response for immediate error,
+  * I is sum of historical error, it is the biase of the control
+  * D is the difference between two consecutive error, it smooth the control
+  * All the control is tuned automatically by twiddle algorithm
   */
   std::vector<double> coeffs_;
   
