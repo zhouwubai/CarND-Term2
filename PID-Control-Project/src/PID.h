@@ -46,6 +46,8 @@ public:
   
   double run_error_;
   
+  double t_weight_;
+  
   int run_steps_;
   
   /*
@@ -66,7 +68,8 @@ public:
   /*
   * Initialize twiddle setting
   */
-  void InitTwiddle(bool finished, double delta_tol, double err_max, int n_min, int n_max, std::vector<double> d_coeffs);
+  void InitTwiddle(bool finished, double delta_tol, double err_max, int n_min, int n_max,
+                   double t_weight, std::vector<double> d_coeffs);
 
   /*
   * Update the PID error variables given cross track error.

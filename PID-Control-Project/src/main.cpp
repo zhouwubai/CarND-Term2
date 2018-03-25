@@ -3,6 +3,7 @@
 #include "json.hpp"
 #include "PID.h"
 #include <math.h>
+#include <algorithm>
 
 // for convenience
 using json = nlohmann::json;
@@ -45,18 +46,20 @@ int main()
 
   PID pid;
   // TODO: Initialize the pid variable.
-  std::vector<double> coeffs{0.875299, 0.0, 0.3101};
+  std::vector<double> coeffs{0.854941, 0.000397675, 0.153347};
   pid.Init(coeffs);
   
   // the second is the maximum cte allowed, decrease it to improve the quality
   // 0.107811 di: 0.059049 dd: 0.11979
-  std::vector<double> d_coeffs{0.0707348, 0.038742, 0.0707348};
-  pid.InitTwiddle(false, 0.01, 1.4, 100, 10000, d_coeffs);
-  
+  std::vector<double> d_coeffs{0.000141922, 2.11985e-5, 8.63692e-5};
+  pid.InitTwiddle(true, 0.0001, 1.0, 100, 10000, 1.0, d_coeffs);
   
   PID speed_pid;
-  std::vector<double> coeffs2{0.2, 0, 0.001};
+  std::vector<double> coeffs2{.5 , .0 , 0.01};
+  std::vector<double> d_coeffs2{0.0590227, 0.0564226, 0.0443449};
   speed_pid.Init(coeffs2);
+  // for speed, we set the sixth 0, t_weight = 0, seems we hope it run faster not longer
+  speed_pid.InitTwiddle(true, 0.02, 30, 20, 500, 0.0, d_coeffs2);
 
   h.onMessage([&pid, &speed_pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -85,7 +88,7 @@ int main()
           * another PID controller to control the speed!
           */
           
-          // tunning
+          // tunning pid
           if (pid.tunning_finished_ == false){
           
               // twiddle on different set of parameters
@@ -112,10 +115,14 @@ int main()
           steer_value = pid.TotalError();
           steer_value = clip(steer_value, 1.0);
           
-          // slow down when doing sharp turn
-          double target_speed = 30.*(1.-abs(steer_value)) + 20.;
-          double throttle_value;
-          speed_pid.UpdateError(speed - target_speed);
+          
+         // slow down when doing sharp turn
+         // Number 20, 20 has huge impacts on the speed and steer
+         double target_speed = 20.0 * (1.-abs(steer_value)) + 10.0;
+         double speed_cte = (speed - target_speed);
+         double throttle_value;
+          
+          speed_pid.UpdateError(speed_cte);
           throttle_value = speed_pid.TotalError();
           throttle_value = clip(throttle_value, 1.0);
           
@@ -123,7 +130,8 @@ int main()
           // DEBUG
           std::cout << "CTE: " << cte << std::endl;
           std::cout << "Steering Value: " << steer_value << std::endl;
-          std::cout << "Angle Value: " << exist_steer << std::endl;
+          std::cout << "STE: " << speed_cte << std::endl;
+          std::cout << "throttle Value: " << throttle_value << std::endl;
           */
           
           json msgJson;

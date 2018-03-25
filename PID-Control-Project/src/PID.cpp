@@ -13,11 +13,13 @@ void PID::Init(std::vector<double> coeffs) {
     
     coeffs_ = coeffs;
     errors_ = std::vector<double>(3, 0);
+    tunning_finished_ = true;// default true
     
     std::cout << "Kp: " << coeffs_[0] << " Ki: " << coeffs_[1] << " Kd: " << coeffs_[2] << std::endl;
 }
 
-void PID::InitTwiddle(bool finished, double delta_tol, double err_max, int n_min, int n_max, std::vector<double> d_coeffs){
+void PID::InitTwiddle(bool finished, double delta_tol, double err_max, int n_min, int n_max,
+                      double t_weight, std::vector<double> d_coeffs){
     
     tunning_finished_ = finished;
     d_coeffs_ = d_coeffs;
@@ -29,6 +31,7 @@ void PID::InitTwiddle(bool finished, double delta_tol, double err_max, int n_min
     run_err_max_ = err_max;
     run_n_min_ = n_min;
     run_n_max_ = n_max;
+    t_weight_ = t_weight;
     
     ResetRun();
 }
@@ -92,7 +95,7 @@ double PID::RunError(){
     
     // consider the steps time_lever in (0, 1]
     double time_lever = exp(1.0 -  run_n_max_ / (double) run_steps_ );
-    avg_err /= time_lever;
+    avg_err *= (1 - t_weight_ * time_lever);
     
     return avg_err;
 }
