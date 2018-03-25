@@ -46,16 +46,16 @@ int main()
 
   PID pid;
   // TODO: Initialize the pid variable.
-  std::vector<double> coeffs{0.854941, 0.000397675, 0.153347};
-  std::vector<double> d_coeffs{0.000141922, 2.11985e-5, 8.63692e-5};
+  std::vector<double> coeffs{0.855083, 0.000418873, 0.153175};
+  std::vector<double> d_coeffs{0.000125188, 2.30852e-05, 9.4056e-05};
   pid.Init(coeffs);
   
   // the second is the maximum cte allowed, decrease it to improve the quality
   // set first parameter to false to turn on auto tunning
-  pid.InitTwiddle(false, 0.0001, 1.0, 100, 1000, d_coeffs);
+  pid.InitTwiddle(false, 0.0001, 1.0, 100, 5000, d_coeffs);
   
   PID speed_pid;
-  std::vector<double> coeffs2{.5 , .0 , 0.01};
+  std::vector<double> coeffs2{.1 , .0 , 0.2};
   std::vector<double> d_coeffs2{0.0590227, 0.0564226, 0.0443449};
   speed_pid.Init(coeffs2);
   // for speed, we set the sixth 0, t_weight = 0, seems we hope it run faster not longer
@@ -118,21 +118,19 @@ int main()
           
          // slow down when doing sharp turn
          // Number 20, 20 has huge impacts on the speed and steer
-         double target_speed = 20.0 * (1.-abs(steer_value)) + 10.0;
+         double target_speed = 10.0 * (1.-abs(steer_value)) + 25.0;
          double speed_cte = (speed - target_speed);
          double throttle_value;
           
           speed_pid.UpdateError(speed_cte);
           throttle_value = speed_pid.TotalError();
-          throttle_value = clip(throttle_value, 2.0);
+          //throttle_value = clip(throttle_value, 3.0);
           
-          /*
           // DEBUG
           std::cout << "CTE: " << cte << std::endl;
           std::cout << "Steering Value: " << steer_value << std::endl;
           std::cout << "STE: " << speed_cte << std::endl;
           std::cout << "throttle Value: " << throttle_value << std::endl;
-          */
           
           json msgJson;
           msgJson["steering_angle"] = steer_value;

@@ -46,7 +46,7 @@ void PID::ResetRun(){
 void PID::UpdateError(double cte) {
     errors_[0] = cte;
     errors_[1] += cte;
-    errors_[2] = cte - errors_[2];
+    errors_[2] = cte - errors_[0];
 }
 
 double PID::TotalError() {
