@@ -3,6 +3,42 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+## Report
+
+
+### Coefficients, P, I, D.
+
+* P controls the response for immediate error.
+  Large P indicates that control follows very responsively from **cte**.
+  But it sometimes also means dramastical change and oscillation since car's behaviors has delay after control
+* I is sum of historical error, it is the biase of the control to the reference.
+  This value can help long term running and average small error to the reference trajectory.
+  Usually this value is very small.
+* D controls the difference between two consecutive error, it smoothes the control and car's behaviors
+
+All the control is tuned automatically by **twiddle algorithm PID::Twiddle**.
+Final parameters for two pids (pid, speed pid) are following:
+
+```python
+  PID pid;
+  // TODO: Initialize the pid variable.
+  std::vector<double> coeffs{0.855083, 0.000418873, 0.153373};
+  std::vector<double> d_coeffs{2.75347e-05, 9.99717e-06, 2.50316e-05};
+  pid.Init(coeffs);
+
+  // the second is the maximum cte allowed, decrease it to improve the quality
+  // set first parameter to false to turn on auto tunning
+  pid.InitTwiddle(true, 0.00001, 1.0, 100, 2000, d_coeffs);
+
+  PID speed_pid;
+  std::vector<double> coeffs2{0.208562 , 0.00033317 , 0.196767};
+  std::vector<double> d_coeffs2{0.00147042, 0.000115008, 0.00100433};
+  speed_pid.Init(coeffs2);
+  // for speed, we set the sixth 0, t_weight = 0, seems we hope it run faster not longer
+  speed_pid.InitTwiddle(true, 0.0001, 20, 100, 2000, d_coeffs2);
+```
+
+
 ## Dependencies
 
 * cmake >= 3.5
@@ -19,7 +55,7 @@ Self-Driving Car Engineer Nanodegree Program
   * Run either `./install-mac.sh` or `./install-ubuntu.sh`.
   * If you install from source, checkout to commit `e94b6e1`, i.e.
     ```
-    git clone https://github.com/uWebSockets/uWebSockets 
+    git clone https://github.com/uWebSockets/uWebSockets
     cd uWebSockets
     git checkout e94b6e1
     ```
@@ -33,7 +69,7 @@ There's an experimental patch for windows in this [PR](https://github.com/udacit
 1. Clone this repo.
 2. Make a build directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
-4. Run it: `./pid`. 
+4. Run it: `./pid`.
 
 Tips for setting up your environment can be found [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
 

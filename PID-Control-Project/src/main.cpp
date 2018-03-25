@@ -59,7 +59,7 @@ int main()
   std::vector<double> d_coeffs2{0.00147042, 0.000115008, 0.00100433};
   speed_pid.Init(coeffs2);
   // for speed, we set the sixth 0, t_weight = 0, seems we hope it run faster not longer
-  speed_pid.InitTwiddle(true, 0.0001, 20, 100, 600, d_coeffs2);
+  speed_pid.InitTwiddle(true, 0.0001, 20, 100, 2000, d_coeffs2);
 
   h.onMessage([&pid, &speed_pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
