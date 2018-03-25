@@ -47,19 +47,19 @@ int main()
   PID pid;
   // TODO: Initialize the pid variable.
   std::vector<double> coeffs{0.854941, 0.000397675, 0.153347};
+  std::vector<double> d_coeffs{0.000141922, 2.11985e-5, 8.63692e-5};
   pid.Init(coeffs);
   
   // the second is the maximum cte allowed, decrease it to improve the quality
-  // 0.107811 di: 0.059049 dd: 0.11979
-  std::vector<double> d_coeffs{0.000141922, 2.11985e-5, 8.63692e-5};
-  pid.InitTwiddle(true, 0.0001, 1.0, 100, 10000, 1.0, d_coeffs);
+  // set first parameter to false to turn on auto tunning
+  pid.InitTwiddle(false, 0.0001, 1.0, 100, 1000, d_coeffs);
   
   PID speed_pid;
   std::vector<double> coeffs2{.5 , .0 , 0.01};
   std::vector<double> d_coeffs2{0.0590227, 0.0564226, 0.0443449};
   speed_pid.Init(coeffs2);
   // for speed, we set the sixth 0, t_weight = 0, seems we hope it run faster not longer
-  speed_pid.InitTwiddle(true, 0.02, 30, 20, 500, 0.0, d_coeffs2);
+  speed_pid.InitTwiddle(true, 0.02, 30, 20, 500, d_coeffs2);
 
   h.onMessage([&pid, &speed_pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -124,7 +124,7 @@ int main()
           
           speed_pid.UpdateError(speed_cte);
           throttle_value = speed_pid.TotalError();
-          throttle_value = clip(throttle_value, 1.0);
+          throttle_value = clip(throttle_value, 2.0);
           
           /*
           // DEBUG
