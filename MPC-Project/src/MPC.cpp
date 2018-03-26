@@ -21,7 +21,6 @@ double dt = 0;
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
 
-
 // The solver takes all the state variables and actuator variables in a singular vector.
 // Actuators only needs N - 1 value
 size_t x_start = 0;
@@ -129,17 +128,24 @@ MPC::~MPC() {}
 
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   bool ok = true;
-  size_t i;
+  // size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
-
+  
+  double x0 = state[0];
+  double y0 = state[1];
+  double psi0 = state[2];
+  double v0 = state[3];
+  double cte0 = state[4];
+  double epsi0 = state[5];
+  
   // TODO: Set the number of model variables (includes both states and inputs).
   // For example: If the state is a 4 element vector, the actuators is a 2
   // element vector and there are 10 timesteps. The number of variables is:
   //
   // 4 * 10 + 2 * 9
-  size_t n_vars = 0;
+  size_t n_vars = N * 6 + 2 * (N - 1);
   // TODO: Set the number of constraints
-  size_t n_constraints = 0;
+  size_t n_constraints = N * 6;
 
   // Initial value of the independent variables.
   // SHOULD BE 0 besides initial state.
@@ -147,10 +153,35 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   for (int i = 0; i < n_vars; i++) {
     vars[i] = 0;
   }
+  
+  vars[x_start] = x0;
+  vars[y_start] = y0;
+  vars[psi_start] = psi0;
+  vars[v_start] = v0;
+  vars[cte_start] = cte0;
+  vars[epsi_start] = epsi0;
 
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);
+  
   // TODO: Set lower and upper limits for variables.
+  // x, y, psi, v, cte, epsi can be any number
+  for(int i = 0; i < steer_start; i ++){
+    vars_lowerbound[i] = -1.0e19;
+    vars_upperbound[i] = 1.0e19;
+  }
+
+  // put contraints for actuators, i.e., steer in radius and throttle
+  for(int i = steer_start; i < throttle_start; i ++){
+    vars_lowerbound[i] = -0.436332;
+    vars_upperbound[i] = 0.436332;
+  }
+  
+  // throttle constrain can be further adjust, larger
+  for(int i = throttle_start; i < n_vars; i ++){
+    vars_lowerbound[i] = -1.0;
+    vars_upperbound[i] = 1.0;
+  }
 
   // Lower and upper limits for the constraints
   // Should be 0 besides initial state.
@@ -160,6 +191,22 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
     constraints_lowerbound[i] = 0;
     constraints_upperbound[i] = 0;
   }
+  
+  // set the initial varaibles' lowerbound and upperbound
+  // the must equal to, so lowerbound == upperbound == inital_value
+  constraints_lowerbound[x_start] = x0;
+  constraints_lowerbound[y_start] = y0;
+  constraints_lowerbound[psi_start] = psi0;
+  constraints_lowerbound[v_start] = v0;
+  constraints_lowerbound[cte_start] = cte0;
+  constraints_lowerbound[epsi_start] = epsi0;
+
+  constraints_upperbound[x_start] = x0;
+  constraints_upperbound[y_start] = y0;
+  constraints_upperbound[psi_start] = psi0;
+  constraints_upperbound[v_start] = v0;
+  constraints_upperbound[cte_start] = cte0;
+  constraints_upperbound[epsi_start] = epsi0;
 
   // object that computes objective and constraints
   FG_eval fg_eval(coeffs);
@@ -202,5 +249,5 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
-  return {};
+  return {solution.x[steer_start], solution.x[throttle_start]};
 }
