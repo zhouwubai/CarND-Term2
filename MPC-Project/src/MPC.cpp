@@ -75,14 +75,6 @@ class FG_eval {
     // first one is the cost
     fg[0] = 0;
     
-    // initial constraints, fg[0] is the cost
-    fg[1 + x_start] = vars[x_start];
-    fg[1 + y_start] = vars[y_start];
-    fg[1 + psi_start] = vars[psi_start];
-    fg[1 + v_start] = vars[v_start];
-    fg[1 + cte_start] = vars[cte_start];
-    fg[1 + epsi_start] = vars[epsi_start];
-    
     size_t t;
     
     // TODO: add more errors, distance to destination, smoothness etc
@@ -105,6 +97,14 @@ class FG_eval {
       fg[0] += CppAD::pow(vars[steer_start + t + 1] - vars[steer_start + t], 2);
       fg[0] += CppAD::pow(vars[throttle_start + t + 1] - vars[throttle_start + t], 2);
     }
+    
+    // initial constraints, fg[0] is the cost
+    fg[1 + x_start] = vars[x_start];
+    fg[1 + y_start] = vars[y_start];
+    fg[1 + psi_start] = vars[psi_start];
+    fg[1 + v_start] = vars[v_start];
+    fg[1 + cte_start] = vars[cte_start];
+    fg[1 + epsi_start] = vars[epsi_start];
     
     // set constraints
     for (t = 1; t < N; t ++){
