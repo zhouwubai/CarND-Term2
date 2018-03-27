@@ -119,9 +119,10 @@ int main() {
           double epsi = psi - atan(derivative(coeffs, px));
           Eigen::VectorXd state(n_state);
           state << px, py, psi, v, cte, epsi;
+          vector<double> results = mpc.Solve(state, coeffs);
           
-          double steer_value;
-          double throttle_value;
+          double steer_value = results[0] / deg2rad(25);
+          double throttle_value = results[1];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -132,6 +133,18 @@ int main() {
           //Display the MPC predicted trajectory 
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
+          
+          for(int i = 1; i < results.size() / 2; i ++){
+            double mx = results[2*i];
+            double my = results[2*i+1];
+            
+            // coordintae transformation from map to car
+            double cx = mx * cos(-psi) - my * sin(-psi);
+            double cy = mx * sin(-psi) + my * cos(-psi);
+            
+            mpc_x_vals.push_back(cx);
+            mpc_y_vals.push_back(cy);
+          }
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
@@ -142,10 +155,21 @@ int main() {
           //Display the waypoints/reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
+          
+          for(int i = 0; i < ptsx.size(); i++){
+            double mx = ptsx[i];
+            double my = ptsy[i];
+            
+            // coordintae transformation from map to car
+            double cx = mx * cos(-psi) - my * sin(-psi);
+            double cy = mx * sin(-psi) + my * cos(-psi);
+            
+            next_x_vals.push_back(cx);
+            next_y_vals.push_back(cy);
+          }
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
 
