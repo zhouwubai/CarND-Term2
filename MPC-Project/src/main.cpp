@@ -129,7 +129,8 @@ int main() {
           state << px, py, psi, v, cte, epsi;
           vector<double> results = mpc.Solve(state, coeffs);
           
-          double steer_value = results[0] / deg2rad(25);
+          // turning left is negative
+          double steer_value = - results[0] / deg2rad(25);
           double throttle_value = results[1];
 
           json msgJson;
@@ -143,12 +144,12 @@ int main() {
           vector<double> mpc_y_vals;
           
           for(int i = 1; i < results.size() / 2; i ++){
-            double mx = results[2*i];
-            double my = results[2*i+1];
+            double dx = results[2*i] - px;
+            double dy = results[2*i+1] - py;
             
             // coordintae transformation from map to car
-            double cx = mx * cos(-psi) - my * sin(-psi);
-            double cy = mx * sin(-psi) + my * cos(-psi);
+            double cx = dx * cos(-psi) - dy * sin(-psi);
+            double cy = dx * sin(-psi) + dy * cos(-psi);
             
             mpc_x_vals.push_back(cx);
             mpc_y_vals.push_back(cy);
@@ -165,12 +166,12 @@ int main() {
           vector<double> next_y_vals;
           
           for(int i = 0; i < ptsx.size(); i++){
-            double mx = ptsx[i];
-            double my = ptsy[i];
+            double dx = ptsx[i] - px;
+            double dy = ptsy[i] - py;
             
             // coordintae transformation from map to car
-            double cx = mx * cos(-psi) - my * sin(-psi);
-            double cy = mx * sin(-psi) + my * cos(-psi);
+            double cx = dx * cos(-psi) - dy * sin(-psi);
+            double cy = dx * sin(-psi) + dy * cos(-psi);
             
             next_x_vals.push_back(cx);
             next_y_vals.push_back(cy);

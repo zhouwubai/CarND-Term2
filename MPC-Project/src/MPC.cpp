@@ -6,8 +6,8 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 20;
-double dt = 0.05;
+size_t N = 10;
+double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -20,6 +20,9 @@ double dt = 0.05;
 //
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
+
+// Set the reference speed
+double ref_v = 20;
 
 // The solver takes all the state variables and actuator variables in a singular vector.
 // Actuators only needs N - 1 value
@@ -79,11 +82,31 @@ class FG_eval {
     fg[1 + v_start] = vars[v_start];
     fg[1 + cte_start] = vars[cte_start];
     fg[1 + epsi_start] = vars[epsi_start];
-    fg[1 + steer_start] = vars[steer_start];
-    fg[1 + throttle_start] = vars[throttle_start];
     
-    // set other constraints
     size_t t;
+    
+    // TODO: add more errors, distance to destination, smoothness etc
+    // cost start from index 1, more errors can be added
+    // The part of the cost based on the reference state.
+    for (t = 0; t < N; t++) {
+      fg[0] += CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+    }
+
+    // Minimize the use of actuators.
+    for (t = 0; t < N - 1; t++) {
+      fg[0] += CppAD::pow(vars[steer_start + t], 2);
+      fg[0] += CppAD::pow(vars[throttle_start + t], 2);
+    }
+
+    // Minimize the value gap between sequential actuations.
+    for (t = 0; t < N - 2; t++) {
+      fg[0] += CppAD::pow(vars[steer_start + t + 1] - vars[steer_start + t], 2);
+      fg[0] += CppAD::pow(vars[throttle_start + t + 1] - vars[throttle_start + t], 2);
+    }
+    
+    // set constraints
     for (t = 1; t < N; t ++){
         
       AD<double> x1 = vars[x_start + t];
@@ -114,12 +137,7 @@ class FG_eval {
       // angle normalization ?
       fg[1 + epsi_start + t] = epsi1 - (psi1 - CppAD::atan(derivative(x1)) + v0 * steer0 * dt / Lf);
       
-      // cost start from index 1, more errors can be added
-      fg[0] += CppAD::pow(cte1, 2) + CppAD::pow(epsi1, 2);
-      
     }//END_OF_FOR
-    
-    // TODO: add more errors, distance to destination, smoothness etc
     
   }
 };
@@ -258,9 +276,9 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   
   results.push_back(solution.x[steer_start]);
   results.push_back(solution.x[throttle_start]);
-  for(int t = 0; t < N; t += step){
-    results.push_back(solution.x[x_start + t]);
-    results.push_back(solution.x[y_start + t]);
+  for(i = 0; i < N; i += step){
+    results.push_back(solution.x[x_start + i]);
+    results.push_back(solution.x[y_start + i]);
   }
   
   return results;
