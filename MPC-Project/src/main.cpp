@@ -41,6 +41,16 @@ double polyeval(Eigen::VectorXd coeffs, double x) {
   return result;
 }
 
+// Derivative for the polynomial at x
+double derivative(Eigen::VectorXd coeffs, double x){
+    double y_prime = 0.0;
+    // start from 1
+    for(int i = 1; i < coeffs.size(); i++){
+        y_prime += i * pow(x, i-1);
+    }
+    return y_prime;
+}
+
 // Fit a polynomial.
 // Adapted from
 // https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
@@ -95,9 +105,21 @@ int main() {
           /*
           * TODO: Calculate steering angle and throttle using MPC.
           *
-          * Both are in between [-1, 1].
+          * Both are in between [-1, 1]. calculate the initial error and fit the polynomial
           *
           */
+          int order = 3;
+          int n_state = 6;
+          Eigen::VectorXd xvals(ptsx.data());
+          Eigen::VectorXd yvals(ptsy.data());
+          Eigen::VectorXd coeffs = polyfit(xvals, yvals, order);
+          
+          double y_dest = polyeval(coeffs, px);
+          double cte = y_dest - py;
+          double epsi = psi - atan(derivative(coeffs, px));
+          Eigen::VectorXd state(n_state);
+          state << px, py, psi, v, cte, epsi;
+          
           double steer_value;
           double throttle_value;
 
