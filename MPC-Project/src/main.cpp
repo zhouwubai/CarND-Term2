@@ -46,7 +46,7 @@ double derivative(Eigen::VectorXd coeffs, double x){
     double y_prime = 0.0;
     // start from 1
     for(int i = 1; i < coeffs.size(); i++){
-        y_prime += i * pow(x, i-1);
+        y_prime += i * coeffs(i) * pow(x, i-1);
     }
     return y_prime;
 }
@@ -110,8 +110,16 @@ int main() {
           */
           int order = 3;
           int n_state = 6;
-          Eigen::VectorXd xvals(ptsx.data());
-          Eigen::VectorXd yvals(ptsy.data());
+          Eigen::VectorXd xvals(ptsx.size());
+          for(int i = 0; i < ptsx.size(); i++){
+            xvals(i) = ptsx[i];
+          }
+          
+          Eigen::VectorXd yvals(ptsy.size());
+          for(int i = 0; i < ptsy.size(); i++){
+            yvals(i) = ptsy[i];
+          }
+          
           Eigen::VectorXd coeffs = polyfit(xvals, yvals, order);
           
           double y_dest = polyeval(coeffs, px);

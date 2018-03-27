@@ -36,12 +36,14 @@ class FG_eval {
  public:
   // Fitted polynomial coefficients
   Eigen::VectorXd coeffs;
+  
   FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
   
   // evalute the polynomial y given x
   AD<double> polyeval(const AD<double>& var_x){
     AD<double> var_y = 0.0;
-    for(int i = 0; i < coeffs.size(); i ++){
+    size_t i;
+    for(i = 0; i < coeffs.size(); i ++){
         var_y += coeffs[i] * CppAD::pow(var_x, i);
     }
     return var_y;
@@ -52,7 +54,8 @@ class FG_eval {
   AD<double> derivative(const AD<double>& var_x){
     AD<double> y_prime = 0.0;
     // start from 1
-    for(int i = 1; i < coeffs.size(); i++){
+    size_t i;
+    for(i = 1; i < coeffs.size(); i++){
         y_prime += i * coeffs[i] * CppAD::pow(var_x, i-1);
     }
     return y_prime;
@@ -80,7 +83,8 @@ class FG_eval {
     fg[1 + throttle_start] = vars[throttle_start];
     
     // set other constraints
-    for (int t = 1; t < N; t ++){
+    size_t t;
+    for (t = 1; t < N; t ++){
         
       AD<double> x1 = vars[x_start + t];
       AD<double> y1 = vars[y_start + t];
@@ -128,7 +132,7 @@ MPC::~MPC() {}
 
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   bool ok = true;
-  // size_t i;
+  size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
   
   double x0 = state[0];
@@ -166,19 +170,19 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   
   // TODO: Set lower and upper limits for variables.
   // x, y, psi, v, cte, epsi can be any number
-  for(int i = 0; i < steer_start; i ++){
+  for(i = 0; i < steer_start; i ++){
     vars_lowerbound[i] = -1.0e19;
     vars_upperbound[i] = 1.0e19;
   }
 
   // put contraints for actuators, i.e., steer in radius and throttle
-  for(int i = steer_start; i < throttle_start; i ++){
+  for(i = steer_start; i < throttle_start; i ++){
     vars_lowerbound[i] = -0.436332;
     vars_upperbound[i] = 0.436332;
   }
   
   // throttle constrain can be further adjust, larger
-  for(int i = throttle_start; i < n_vars; i ++){
+  for(i = throttle_start; i < n_vars; i ++){
     vars_lowerbound[i] = -1.0;
     vars_upperbound[i] = 1.0;
   }
@@ -187,7 +191,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // Should be 0 besides initial state.
   Dvector constraints_lowerbound(n_constraints);
   Dvector constraints_upperbound(n_constraints);
-  for (int i = 0; i < n_constraints; i++) {
+  for (i = 0; i < n_constraints; i++) {
     constraints_lowerbound[i] = 0;
     constraints_upperbound[i] = 0;
   }
