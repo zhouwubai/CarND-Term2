@@ -132,13 +132,13 @@ class FG_eval {
       fg[1 + psi_start + t] = psi1 - (psi0 + v0 * steer0 * dt / Lf);
       fg[1 + v_start + t] = v1 - (v0 + throttle0 * dt);
       
-      fg[1 + cte_start + t] = cte1 - (polyeval(x0) - y0 + v0 * CppAD::sin(epsi0) * dt);
-      fg[1 + epsi_start + t] = epsi1 - (psi0 - CppAD::atan(derivative(x0)) + v0 * steer0 * dt / Lf);
+      //fg[1 + cte_start + t] = cte1 - (polyeval(x0) - y0 + v0 * CppAD::sin(epsi0) * dt);
+      //fg[1 + epsi_start + t] = epsi1 - (psi0 - CppAD::atan(derivative(x0)) + v0 * steer0 * dt / Lf);
       
-      // AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * x0 * x0 + coeffs[3] * x0 * x0 * x0;
-      // AD<double> psi_des0 = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0 + 3 * coeffs[3] * x0 * x0);
-      // fg[1 + cte_start + t] = cte1 - (f0 - y0 + v0 * CppAD::sin(epsi0) * dt);
-      // fg[1 + epsi_start + t] = epsi1 - (psi1 - psi_des0 + v0 * steer0 * dt / Lf);
+      AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * x0 * x0 + coeffs[3] * x0 * x0 * x0;
+      AD<double> psi_des0 = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0 + 3 * coeffs[3] * x0 * x0);
+      fg[1 + cte_start + t] = cte1 - (f0 - y0 + v0 * CppAD::sin(epsi0) * dt);
+      fg[1 + epsi_start + t] = epsi1 - (psi0 - psi_des0 + v0 * steer0 * dt / Lf);
       
     }//END_OF_FOR
     
@@ -252,7 +252,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   options += "Sparse  true        reverse\n";
   // NOTE: Currently the solver has a maximum time limit of 0.5 seconds.
   // Change this as you see fit.
-  options += "Numeric max_cpu_time         0.5\n";
+  options += "Numeric max_cpu_time         1.5\n";
 
   // place to return solution
   CppAD::ipopt::solve_result<Dvector> solution;
