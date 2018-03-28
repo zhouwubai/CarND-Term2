@@ -45,9 +45,8 @@ class FG_eval {
   // evalute the polynomial y given x
   AD<double> polyeval(const AD<double>& var_x){
     AD<double> var_y = 0.0;
-    size_t i;
-    for(i = 0; i < coeffs.size(); i ++){
-        var_y += coeffs[i] * CppAD::pow(var_x, i);
+    for(int i = 0; i < coeffs.size(); i ++){
+        var_y += coeffs[i] * CppAD::pow(var_x, (double) i); // int might cause problem
     }
     return var_y;
   }
@@ -57,9 +56,8 @@ class FG_eval {
   AD<double> derivative(const AD<double>& var_x){
     AD<double> y_prime = 0.0;
     // start from 1
-    size_t i;
-    for(i = 1; i < coeffs.size(); i++){
-        y_prime += i * coeffs[i] * CppAD::pow(var_x, i-1);
+    for(int i = 1; i < coeffs.size(); i++){
+        y_prime += i * coeffs[i] * CppAD::pow(var_x, (double) (i-1));
     }
     return y_prime;
   }
@@ -81,21 +79,21 @@ class FG_eval {
     // cost start from index 1, more errors can be added
     // The part of the cost based on the reference state.
     for (t = 0; t < N; t++) {
-      fg[0] += CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += CppAD::pow(vars[epsi_start + t], 2);
-      fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+      fg[0] += CppAD::pow(vars[cte_start + t], 2.0);
+      fg[0] += CppAD::pow(vars[epsi_start + t], 2.0);
+      fg[0] += 10 * CppAD::pow(vars[v_start + t] - ref_v, 2.0);
     }
 
     // Minimize the use of actuators.
     for (t = 0; t < N - 1; t++) {
-      fg[0] += CppAD::pow(vars[steer_start + t], 2);
-      fg[0] += CppAD::pow(vars[throttle_start + t], 2);
+      fg[0] += CppAD::pow(vars[steer_start + t], 2.0);
+      fg[0] += CppAD::pow(vars[throttle_start + t], 2.0);
     }
 
     // Minimize the value gap between sequential actuations.
     for (t = 0; t < N - 2; t++) {
-      fg[0] += CppAD::pow(vars[steer_start + t + 1] - vars[steer_start + t], 2);
-      fg[0] += CppAD::pow(vars[throttle_start + t + 1] - vars[throttle_start + t], 2);
+      fg[0] += CppAD::pow(vars[steer_start + t + 1] - vars[steer_start + t], 2.0);
+      fg[0] += CppAD::pow(vars[throttle_start + t + 1] - vars[throttle_start + t], 2.0);
     }
     
     // initial constraints, fg[0] is the cost
@@ -133,9 +131,14 @@ class FG_eval {
       fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
       fg[1 + psi_start + t] = psi1 - (psi0 + v0 * steer0 * dt / Lf);
       fg[1 + v_start + t] = v1 - (v0 + throttle0 * dt);
+      
       fg[1 + cte_start + t] = cte1 - (polyeval(x0) - y0 + v0 * CppAD::sin(epsi0) * dt);
-      // angle normalization ?
-      fg[1 + epsi_start + t] = epsi1 - (psi1 - CppAD::atan(derivative(x1)) + v0 * steer0 * dt / Lf);
+      fg[1 + epsi_start + t] = epsi1 - (psi1 - CppAD::atan(derivative(x0)) + v0 * steer0 * dt / Lf);
+      
+      // AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * x0 * x0 + coeffs[3] * x0 * x0 * x0;
+      // AD<double> psi_des0 = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0 + 3 * coeffs[3] * x0 * x0);
+      // fg[1 + cte_start + t] = cte1 - (f0 - y0 + v0 * CppAD::sin(epsi0) * dt);
+      // fg[1 + epsi_start + t] = epsi1 - (psi1 - psi_des0 + v0 * steer0 * dt / Lf);
       
     }//END_OF_FOR
     
@@ -249,7 +252,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   options += "Sparse  true        reverse\n";
   // NOTE: Currently the solver has a maximum time limit of 0.5 seconds.
   // Change this as you see fit.
-  options += "Numeric max_cpu_time          0.5\n";
+  options += "Numeric max_cpu_time         2.5\n";
 
   // place to return solution
   CppAD::ipopt::solve_result<Dvector> solution;
