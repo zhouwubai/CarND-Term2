@@ -101,6 +101,11 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          
+          // steering left is negative in car coordinates, but for map coordinates, it is positive
+          // this can be used to derive next state
+          //double steer_angle = j[1]["steering_angle"];
+          //double throttle = j[1]["throttle"];
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -110,26 +115,31 @@ int main() {
           */
           int order = 3;
           int n_state = 6;
-          Eigen::VectorXd xvals(ptsx.size());
-          for(int i = 0; i < ptsx.size(); i++){
-            xvals(i) = ptsx[i];
-          }
           
+          // transform to car coordinates
+          Eigen::VectorXd xvals(ptsx.size());
           Eigen::VectorXd yvals(ptsy.size());
-          for(int i = 0; i < ptsy.size(); i++){
-            yvals(i) = ptsy[i];
+          for(int i = 0; i < ptsx.size(); i++){
+            double x = ptsx[i] - px;
+            double y = ptsy[i] - py;
+            
+            xvals[i] = x * cos(-psi) - y * sin(-psi);
+            yvals[i] = x * sin(-psi) + y * cos(-psi);
           }
           
           Eigen::VectorXd coeffs = polyfit(xvals, yvals, order);
           
-          double y_dest = polyeval(coeffs, px);
-          double cte = y_dest - py;
-          double epsi = psi - atan(derivative(coeffs, px));
+          // car position is the origin now, 0, 0, 0 for psi
+          double y_dest = polyeval(coeffs, 0);
+          double cte = y_dest;
+          
+          // for x = 0, derivative is always coeffs[1]
+          double epsi = - atan(coeffs[1]);
           Eigen::VectorXd state(n_state);
-          state << px, py, psi, v, cte, epsi;
+          state << 0, 0, 0, v, cte, epsi;
           vector<double> results = mpc.Solve(state, coeffs);
           
-          // turning left is negative
+          // turning left is negative in car coordinate, but positive in map system
           double steer_value = - results[0] / deg2rad(25);
           double throttle_value = results[1];
 
@@ -143,16 +153,10 @@ int main() {
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
           
+          // The return the (x, y) is already in the car coordinates
           for(int i = 1; i < results.size() / 2; i ++){
-            double dx = results[2*i] - px;
-            double dy = results[2*i+1] - py;
-            
-            // coordintae transformation from map to car
-            double cx = dx * cos(-psi) - dy * sin(-psi);
-            double cy = dx * sin(-psi) + dy * cos(-psi);
-            
-            mpc_x_vals.push_back(cx);
-            mpc_y_vals.push_back(cy);
+            mpc_x_vals.push_back(results[2*i]);
+            mpc_y_vals.push_back(results[2*i+1]);
           }
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
@@ -165,16 +169,10 @@ int main() {
           vector<double> next_x_vals;
           vector<double> next_y_vals;
           
+          // same as x_vals, y_vals
           for(int i = 0; i < ptsx.size(); i++){
-            double dx = ptsx[i] - px;
-            double dy = ptsy[i] - py;
-            
-            // coordintae transformation from map to car
-            double cx = dx * cos(-psi) - dy * sin(-psi);
-            double cy = dx * sin(-psi) + dy * cos(-psi);
-            
-            next_x_vals.push_back(cx);
-            next_y_vals.push_back(cy);
+            next_x_vals.push_back(xvals(i));
+            next_y_vals.push_back(yvals(i));
           }
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
