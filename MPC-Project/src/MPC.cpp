@@ -7,7 +7,7 @@ using CppAD::AD;
 
 // TODO: Set the timestep length and duration
 size_t N = 10;
-double dt = 0.1;
+double dt = 0.3;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -21,8 +21,19 @@ double dt = 0.1;
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
 
+// weight for variables
+const int w_cte = 1;
+const int w_epsi = 5;
+const int w_v = 5;
+
+const int w_steer = 5;
+const int w_throttle = 1;
+
+const int w_steer_diff = 5;
+const int w_throttle_diff = 5;
+
 // Set the reference speed
-double ref_v = 40;
+double ref_v = 80;
 
 // The solver takes all the state variables and actuator variables in a singular vector.
 // Actuators only needs N - 1 value
@@ -79,21 +90,21 @@ class FG_eval {
     // cost start from index 1, more errors can be added
     // The part of the cost based on the reference state.
     for (t = 0; t < N; t++) {
-      fg[0] += CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += CppAD::pow(vars[epsi_start + t], 2);
-      fg[0] += 10 * CppAD::pow(vars[v_start + t] - ref_v, 2);
+      fg[0] += w_cte * CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += w_epsi * CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += w_v * CppAD::pow(vars[v_start + t] - ref_v, 2);
     }
 
     // Minimize the use of actuators.
     for (t = 0; t < N - 1; t++) {
-      fg[0] += CppAD::pow(vars[steer_start + t], 2);
-      fg[0] += CppAD::pow(vars[throttle_start + t], 2);
+      fg[0] += w_steer * CppAD::pow(vars[steer_start + t], 2);
+      fg[0] += w_throttle * CppAD::pow(vars[throttle_start + t], 2);
     }
 
     // Minimize the value gap between sequential actuations.
     for (t = 0; t < N - 2; t++) {
-      fg[0] += CppAD::pow(vars[steer_start + t + 1] - vars[steer_start + t], 2);
-      fg[0] += CppAD::pow(vars[throttle_start + t + 1] - vars[throttle_start + t], 2);
+      fg[0] += w_steer_diff * CppAD::pow(vars[steer_start + t + 1] - vars[steer_start + t], 2);
+      fg[0] += w_throttle_diff * CppAD::pow(vars[throttle_start + t + 1] - vars[throttle_start + t], 2);
     }
     
     // initial constraints, fg[0] is the cost
@@ -110,7 +121,7 @@ class FG_eval {
       AD<double> x1 = vars[x_start + t];
       AD<double> y1 = vars[y_start + t];
       AD<double> psi1 = vars[psi_start + t];
-      AD<double> v1 = vars[y_start + t];
+      AD<double> v1 = vars[v_start + t];
       AD<double> cte1 = vars[cte_start + t];
       AD<double> epsi1 = vars[epsi_start + t];
       
@@ -132,6 +143,8 @@ class FG_eval {
       fg[1 + psi_start + t] = psi1 - (psi0 + v0 * steer0 * dt / Lf);
       fg[1 + v_start + t] = v1 - (v0 + throttle0 * dt);
       
+      // thereotically: cte1 = y0 + v0 * sin(epsi0) * dt - polyeval(x0)
+      // a negative epsi0 means we should turn left
       fg[1 + cte_start + t] = cte1 - (polyeval(x0) - y0 + v0 * CppAD::sin(epsi0) * dt);
       fg[1 + epsi_start + t] = epsi1 - (psi0 - CppAD::atan(derivative(x0)) + v0 * steer0 * dt / Lf);
       
@@ -175,7 +188,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // Initial value of the independent variables.
   // SHOULD BE 0 besides initial state.
   Dvector vars(n_vars);
-  for (int i = 0; i < n_vars; i++) {
+  for (i = 0; i < n_vars; i++) {
     vars[i] = 0;
   }
   
@@ -252,7 +265,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   options += "Sparse  true        reverse\n";
   // NOTE: Currently the solver has a maximum time limit of 0.5 seconds.
   // Change this as you see fit.
-  options += "Numeric max_cpu_time         5.5\n";
+  // options += "Numeric max_cpu_time         2.5\n";
 
   // place to return solution
   CppAD::ipopt::solve_result<Dvector> solution;

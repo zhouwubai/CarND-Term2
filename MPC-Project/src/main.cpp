@@ -128,6 +128,10 @@ int main() {
           }
           
           Eigen::VectorXd coeffs = polyfit(xvals, yvals, order);
+          // output coeffs for debugging
+          for (int i = 0; i < coeffs.size(); i++){
+            cout << coeffs(i) << ", ";
+          }
           
           // car position is the origin now, 0, 0, 0 for psi
           double y_dest = polyeval(coeffs, 0);
