@@ -104,9 +104,19 @@ int main() {
           
           // steering left is negative in car coordinates, but for map coordinates, it is positive
           // this can be used to derive next state
-          //double steer_angle = j[1]["steering_angle"];
-          //double throttle = j[1]["throttle"];
-
+          double steer_angle = j[1]["steering_angle"];
+          double throttle = j[1]["throttle"];
+          
+          bool using_latency = false;
+          if (using_latency == true){
+            // predict state in 100ms
+            double Lf = 2.67;
+            double latency = 0.1;
+            px = px + v * cos(psi) * latency;
+            py = py + v * sin(psi) * latency;
+            psi = psi + v * (0 - steer_angle) / Lf * latency; // change sign of steer_angle
+            v = v + throttle * latency; // Note: throttle is not acceleration
+          }
           /*
           * TODO: Calculate steering angle and throttle using MPC.
           *

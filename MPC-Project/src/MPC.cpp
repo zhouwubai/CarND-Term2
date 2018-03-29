@@ -6,7 +6,7 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 10;
+size_t N = 8;
 double dt = 0.15;
 
 // This value assumes the model presented in the classroom is used.
@@ -33,7 +33,7 @@ const int w_steer_diff = 500;
 const int w_throttle_diff = 100;
 
 // Set the reference speed
-double ref_v = 60;
+double ref_v = 80;
 
 // The solver takes all the state variables and actuator variables in a singular vector.
 // Actuators only needs N - 1 value

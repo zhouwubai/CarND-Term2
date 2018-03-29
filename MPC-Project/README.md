@@ -3,6 +3,105 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+## Report
+
+### The Model
+
+Here, I want to mention two things about the model.
+
+* **Map or Car Coordinate**
+
+The first time, I implemented the MPC using using global map coordinates, then it is not working.
+I see some discussion proposal using Car's coordinate for fitting the polynomial and optimization.
+
+Actually I am a little confused about this transformation. For fitting polynomial, defintely
+there is no difference. For car's predict model, I think it also works for both coordinates, since
+even we transformed to the car's coordinate, everything fed into the optimization is only relative to
+the car's starting point `px`, 'py' and 'psi'.
+That means the equation of predict model is relative to `(px, py, psi)`,
+which we can consider as a global coordinate.
+Definitely we do not update the car's coordinate for every predicted steps in the optimizer.
+
+The only advantage of transformation is calculating the right `cte`,
+but this only works if the car's starting point is relatively parallel to the reference/the road.
+If starting point is vertical to the reference line, for example, then it will fail too.
+
+* **Positive or Negative**
+
+  * Sign of the `psi` and `steering angle`: `psi` is relative to global coordinate, car turning left will
+  make it larger. However, `steering angle` for car turning left is negative.
+
+  * Sign of 'cte' and 'epsi': From the class of PID, we know the cte is just `y_c` (car's y) since the reference line
+  always has `y_r = 0` (reference's y). Mathematically, that means `cte = y_c - y_r` instead of ``cte = y_r - y_c``.
+  In our model equation, we are using both which cause a little confusing for me, though it does not matter
+  once it is consistent for all calculation. Code is listed according to our equations for `cte` and `epsi`
+  in the lecture
+
+  ```python
+  fg[1 + cte_start + t] = cte1 - (polyeval(x0) - y0 + v0 * CppAD::sin(epsi0) * dt);
+  fg[1 + epsi_start + t] = epsi1 - (psi0 - CppAD::atan(derivative(x0)) + v0 * steer0 * dt / Lf);
+  ```
+
+  If we look carefully, `cte` is calculated as 'desired value minuses current value' but the other way around
+  for `epsi`.
+
+
+### Timestep Length and Elapsed Duration
+
+Timestep Length `N` and Elapsed Duration `dt` controls whether our actions are long term or short term.
+
+If small `dt` and `N` are implemented, it means car might be responsive and does not care long term planning.
+The problem for this is that car might be very unstable and swift dramastically.
+
+However, If large `dt` and `N` are implemented, it means car care about long term planning, but might neglect
+current situation. The problem is that car might affect dramastically by a very future step.
+
+A good choice of `dt` and 'N' depends on the trail.
+A straight and flat trail is good enought to use small 'dt' and `N`,
+but winding trail, a relative larger `N` is needed. In my project, following parameters are chosed:
+
+```python
+
+size_t N = 8;
+double dt = 0.15;
+
+```
+
+
+### Model Predictive Control with Latency
+
+Latency will affect our model when the speed is high, we can see the yellow line and gree line is swifting
+after that. The reason for that is when speed is high, when the actuators take affect (after 0.1 s), the
+car is already for away from the point `(px, py, psi)` we did the coordinate transformation.
+
+Here is how we handle the latency. Basically we assume the starting point, also the initial state point,
+is the point after car running the latency time.
+
+
+```python
+double px = j[1]["x"];
+double py = j[1]["y"];
+double psi = j[1]["psi"];
+double v = j[1]["speed"];
+
+// steering left is negative in car coordinates, but for map coordinates, it is positive
+// this can be used to derive next state
+double steer_angle = j[1]["steering_angle"];
+double throttle = j[1]["throttle"];
+
+bool using_latency = false;
+if (using_latency == true){
+  // predict state in 100ms
+  double Lf = 2.67;
+  double latency = 0.1;
+  px = px + v * cos(psi) * latency;
+  py = py + v * sin(psi) * latency;
+  psi = psi + v * (0 - steer_angle) / Lf * latency; // change sign of steer_angle
+  v = v + throttle * latency; // Note: throttle is not acceleration
+}
+```
+
+
 ## Dependencies
 
 * cmake >= 3.5
@@ -31,36 +130,6 @@ Self-Driving Car Engineer Nanodegree Program
 * Not a dependency but read the [DATA.md](./DATA.md) for a description of the data sent back from the simulator.
 
 
-## Basic Build Instructions
-
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./mpc`.
-
-## Tips
-
-1. It's recommended to test the MPC on basic examples to see if your implementation behaves as desired. One possible example
-is the vehicle starting offset of a straight line (reference). If the MPC implementation is correct, after some number of timesteps
-(not too many) it should find and track the reference line.
-2. The `lake_track_waypoints.csv` file has the waypoints of the lake track. You could use this to fit polynomials and points and see of how well your model tracks curve. NOTE: This file might be not completely in sync with the simulator so your solution should NOT depend on it.
-3. For visualization this C++ [matplotlib wrapper](https://github.com/lava/matplotlib-cpp) could be helpful.)
-4.  Tips for setting up your environment are available [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
-5. **VM Latency:** Some students have reported differences in behavior using VM's ostensibly a result of latency.  Please let us know if issues arise as a result of a VM environment.
-
-## Editor Settings
-
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
-
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
-
-## Code Style
-
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
-
 ## Project Instructions and Rubric
 
 Note: regardless of the changes you make, your project must be buildable using
@@ -70,39 +139,6 @@ More information is only accessible by people who are already enrolled in Term 2
 of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/b1ff3be0-c904-438e-aad3-2b5379f0e0c3/concepts/1a2255a0-e23c-44cf-8d41-39b8a3c8264a)
 for instructions and the project rubric.
 
-## Hints!
-
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
 
 ## How to write a README
 A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
