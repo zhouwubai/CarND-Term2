@@ -6,8 +6,8 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 15;
-double dt = 0.1;
+size_t N = 10;
+double dt = 0.15;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -22,15 +22,15 @@ double dt = 0.1;
 const double Lf = 2.67;
 
 // weight for variables
-const int w_cte = 50;
-const int w_epsi = 50;
+const int w_cte = 500;
+const int w_epsi = 200;
 const int w_v = 1;
 
 const int w_steer = 500;
-const int w_throttle = 500;
+const int w_throttle = 100;
 
-const int w_steer_diff = 1000;
-const int w_throttle_diff = 1000;
+const int w_steer_diff = 500;
+const int w_throttle_diff = 100;
 
 // Set the reference speed
 double ref_v = 60;
